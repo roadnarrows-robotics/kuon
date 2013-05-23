@@ -2,7 +2,7 @@
 <package>
   <name>kuon</name>
   <version>0.0.1</version>
-  <description>The Kuon rugged mobile robotic platform ROS metapackage - provides complete kuon software bundle.</description>
+  <description>The Kuon Rugged Mobile Robotic Platform ROS metapackage - provides complete kuon software bundle.</description>
   <maintainer email="daniel@roadnarrows.com">daniel packard</maintainer>
 
   <license>BSD</license>
@@ -18,7 +18,6 @@
   <run_depend>kuon_control</run_depend>
   <run_depend>kuon_desc</run_depend>
   <run_depend>kuon_launch</run_depend>
-  <run_depend>kuon_moveit_config</run_depend>
 
   <export>
     <metapackage/>
