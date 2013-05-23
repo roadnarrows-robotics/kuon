@@ -10,7 +10,7 @@ To get up and running with a new Kuon:
 
 Learn more about Kuon on the [RoadNarrows R&D - Kuon](http://roadnarrows.com/r-and-d/Kuon/) page.
 
-Visit the [RoadNarrows Store]() to get your very own!
+Visit the [RoadNarrows Store](http://www.roadnarrows-store.com/products/move/mobile-bases/outdoor-bases/kuon.html) to get your very own!
 
 ***
 
