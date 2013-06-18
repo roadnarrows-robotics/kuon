@@ -15,7 +15,7 @@ Visit the [RoadNarrows Store](http://www.roadnarrows-store.com/products/move/mob
 ***
 
 
-Once you're system is configured, you can move on to some of the examples!
+Once your system is configured, you can move on to some of the examples!
  * [**Examples**](https://github.com/roadnarrows-robotics/kuon/wiki/ROS-Kuon-Examples)
 
 ***
