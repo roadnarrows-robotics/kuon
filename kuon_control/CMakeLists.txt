@@ -19,65 +19,46 @@ find_package(Boost REQUIRED COMPONENTS system)
 #           clobber.
 # )
 find_library(
-  kuon_ctl_rnr_LIBRARIES
-  NAMES hekateros Dynamixel botsense netmsgs rnr_appkit rnr
+  kuon_ctl_LIBRARIES
+  NAMES serial rnr
   PATHS /prj/lib /prj/lib/rnr
 )
 
-catkin_python_setup()
+message("hey")
+message(${kuon_ctl_LIBRARIES})
+message("oooooooooooooooooooooo")
+
+#catkin_python_setup()
 
 add_message_files(
   DIRECTORY msg
   FILES 
-    HekOpState.msg 
-    ProductInfo.msg 
-    HekJointStateExtended.msg 
-    HekRobotStatusExtended.msg
-    ServoHealth.msg
+    KuonState.msg
+    KuonStatus.msg
+    MotorCommand.msg
+    Version.msg
 )
 
 add_service_files(
   DIRECTORY srv
   FILES
-    Calibrate.srv 
-    ClearAlarms.srv 
-    CloseGripper.srv 
-    EStop.srv 
-    Freeze.srv 
-    GetProductInfo.srv 
-    GotoBalancedPos.srv 
-    GotoParkedPos.srv 
-    GotoZeroPt.srv 
-    IsAlarmed.srv 
-    IsCalibrated.srv 
-    IsDescLoaded.srv
-    OpenGripper.srv
-    Release.srv
-    ResetEStop.srv 
-    SetRobotMode.srv
-    Stop.srv
-)
-
-add_action_files(
-  DIRECTORY action 
-  FILES 
-    Calibrate.action
+    EStop.srv
+    QueryVersion.srv
+    ResetEStop.srv
 )
 
 ## Generate added messages/services/actions with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  actionlib_msgs
-  industrial_msgs
-  sensor_msgs
   std_msgs
 )
 
-catkin_package(
-  CATKIN_DEPENDS actionlib_msgs
-)
+catkin_package(CATKIN_DEPENDS)
 
-add_executable(hekateros_control src/hekateros_control.cpp)
+add_executable(kuon_control 
+                 src/kuon_control_main.cpp 
+                 src/kuon_control.cpp 
+                 src/KuonRobot.cpp)
 
 include_directories(
   include 
@@ -86,19 +67,16 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 )
 
-target_link_libraries(hekateros_control 
-  ${hek_ctl_rnr_LIBRARIES}
+target_link_libraries(kuon_control 
+  ${kuon_ctl_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
-add_dependencies(hekateros_control hekateros_control_gencpp)
+add_dependencies(kuon_control kuon_control_gencpp)
 
-install(
-  PROGRAMS 
-    scripts/calibrate_arm
-    scripts/hek_panel
-    scripts/hek_teleop
-    scripts/joint_trajectory_demo 
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+#install(
+#PROGRAMS 
+#scripts/joint_trajectory_demo 
+#DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 
