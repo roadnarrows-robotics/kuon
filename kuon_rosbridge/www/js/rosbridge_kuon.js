@@ -63,12 +63,6 @@ function xbox360(throttle_rate) {
     this.set_led_srv.callService(req, function(rsp){cb(rsp);});
   }
 
-  this.ping = function(cb) {
-    cb = typeof cb !== 'undefined' ? cb : function(rsp){};
-    var req = new ROSLIB.ServiceRequest({});
-    this.ping_srv.callService(req, function(rsp){cb(rsp);});
-  }
-
   this.draw = function()
   { 
     d3.xml("../img/xbox.svg", "image/svg+xml", function(xml) {
@@ -76,49 +70,6 @@ function xbox360(throttle_rate) {
       createButtons(XboxButtonInfoTable);
     });
   }
-
-  // Available LED patterns
-  this.led_pattern = {
-    ALL_OFF       : 0,
-    ALL_ON_BLINK  : 1,
-    LED1_BLINK_ON : 2,
-    LED2_BLINK_ON : 3,
-    LED3_BLINK_ON : 4,
-    LED4_BLINK_ON : 5,
-    LED1_ON       : 6,
-    LED2_ON       : 7,
-    LED3_ON       : 8,
-    LED4_ON       : 9,
-    ALL_SPIN      : 10,
-    LED4_BLINK_LONG : 11,
-    LED4_BLINK    : 12,
-    ALL_SPIN2     : 13,
-    ALL_BLINK     : 14
-  };
-
-  this.default_state = {
-    a_button: 0,
-    b_button: 0,
-    back_button: 0,
-    center_button: 0,
-    dpad_down: 0,
-    dpad_left: 0,
-    dpad_right: 0,
-    dpad_up: 0,
-    left_bump: 0,
-    left_joy_click: 0,
-    left_joy_x: 0,
-    left_joy_y: 0,
-    left_trig: 0,
-    right_bump: 0,
-    right_joy_click: 0,
-    right_joy_x: 0,
-    right_joy_y: 0,
-    right_trig: 0,
-    start_button: 0,
-    x_button: 0,
-    y_button: 0
-  };
 
   //------------------------------------------------------------------------//
   //                          PRIVATE IMPLEMENTATION                        //
