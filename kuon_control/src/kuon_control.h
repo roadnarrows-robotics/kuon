@@ -69,16 +69,8 @@ class KuonControlNode
 {
 public:
 
-  KuonControlNode(std::string dev1 = "/dev/ttyACM0", 
-                  std::string dev2 = "/dev/ttyACM1")
+  KuonControlNode()
   {
-    // start in estopped state
-    m_bIsEStopped = true;
-
-    // governor is initially set to 10% of maximum
-    m_fGovernor   = 0.10; 
-
-    m_pRobot->setDeviceNames(dev1, dev2);
   }
 
   ~KuonControlNode() {disconnect();}
@@ -97,7 +89,7 @@ public:
                     kuon_control::QueryVersion::Response &rsp);
 
   // --- Subscriptions
-
+  
   // --- Publications
 
 

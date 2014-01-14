@@ -52,18 +52,15 @@
 #ifndef _KUON_ROBOT_H
 #define _KUON_ROBOT_H
 
+#include <string.h>
 #include <string>
 
-#include "Kuon/RS160DControl.h"
+#include "rnr/serdev.h"
 
 class KuonRobot
 {
 public:
-  // --- class constants and enums
-  static const int DEFAULT_BAUDRATE = 38400;
-
-  KuonRobot(std::string dev1="/dev/ttyACM0", std::string dev2="/dev/ttyACM1")
-    : m_strFrontMots(dev1), m_strRearMots(dev2)
+  KuonRobot()
   {
   }
 
@@ -78,16 +75,9 @@ public:
   int setSpeeds(int left, int right);
   int setSlew(int s);
   int setBrake(int b);
-
-  void setDeviceNames(std::string dev1, std::string dev2)
-  {
-    m_strFrontMots = dev1;
-    m_strRearMots  = dev2;
-  }
+  int estop();
 
 protected: 
-  std::string m_strFrontMots;
-  std::string m_strRearMots;
   int m_fdFrontMots;
   int m_fdRearMots;
 };

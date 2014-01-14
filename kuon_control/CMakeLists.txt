@@ -20,7 +20,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 # )
 find_library(
   kuon_ctl_LIBRARIES
-  NAMES serial rnr
+  NAMES RS160D serial rnr 
   PATHS /prj/lib /prj/lib/rnr
 )
 

@@ -52,53 +52,38 @@
 #include <stdio.h>
 #include <string>
 
+#include "Kuon/RS160DControl.h"
 #include "KuonRobot.h"
-#include "rnr/serdev.h"
 
 int KuonRobot::connect()
 {
-  m_fdFrontMots = SerDevOpen(m_strFrontMots.c_str(), 
-                             KuonRobot::DEFAULT_BAUDRATE,
-                             8, 'N', 1, false, false);
-
-  m_fdRearMots = SerDevOpen(m_strRearMots.c_str(), 
-                             KuonRobot::DEFAULT_BAUDRATE,
-                             8, 'N', 1, false, false);
-
-  if(m_fdFrontMots < 0 || m_fdRearMots < 0)
-  {
-    fprintf(stderr,"DHP - failed to open one of the motor controllers\n");
-    return -1;
+  int error = 0;
+  error = RS160DOpenConnection("/dev/ttyACM0",&m_fdFrontMots);
+  if(error < 0) {
+    LOGDIAG2("Failed to open front motor controller");
+    exit(1);
   }
-  else
-  {
-    fprintf(stderr,"Motor controllers opened successfully\n");
-    return 0;
+  error = RS160DOpenConnection("/dev/ttyACM1",&m_fdRearMots);
+  if(error < 0) {
+    exit(1);
+  }
+  error = RS160DSetToSerial(m_fdFrontMots);
+  if(error < 0) {
+    exit(1);
+  }
+  error = RS160DSetToSerial(m_fdRearMots);
+  if(error < 0) {
+    exit(1);
   }
 }
 
 int KuonRobot::disconnect()
 {
-  int rc = 0;
-
-  SerDevFIFOOutputFlush(m_fdRearMots);
-  SerDevFIFOOutputFlush(m_fdFrontMots);
-
-  if( SerDevClose(m_fdFrontMots) < 0)
-  {
-    rc=-1;
-    fprintf(stderr, "Failed to close front motor controller\n");
-  }
-
-  if( SerDevClose(m_fdRearMots) < 0)
-  {
-    rc=-1;
-    fprintf(stderr,"Failed to close rear motor controller\n");
-  }
-
-  return rc;
 }
 
+int KuonRobot::estop()
+{
+}
 
 int KuonRobot::setSpeeds(int left, int right)
 {
@@ -111,4 +96,5 @@ int KuonRobot::setSlew(int s)
 int KuonRobot::setBrake(int b)
 {
 }
+
 

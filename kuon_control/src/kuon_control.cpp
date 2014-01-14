@@ -80,12 +80,15 @@ int KuonControlNode::disconnect()
 bool KuonControlNode::EStop(EStop::Request &req,
                             EStop::Response &rsp)
 {
+  ROS_DEBUG("ESTOP!");
+  m_pRobot->estop();
   return true;
 }
 
 bool KuonControlNode::ResetEStop(ResetEStop::Request &req,
                                  ResetEStop::Response &rsp)
 {
+  ROS_DEBUG("Resetting estop state.");
   return true;
 }
 
