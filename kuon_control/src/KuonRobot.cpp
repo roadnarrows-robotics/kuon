@@ -19,6 +19,7 @@
 * (http://www.roadnarrows.com)
 * \n All Rights Reserved
 */
+
 /*
 * @EulaBegin@
 *
@@ -49,6 +50,7 @@
 * @EulaEnd@
 */
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <stdio.h>
 #include <string>
 

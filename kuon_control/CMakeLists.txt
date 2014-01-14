@@ -12,7 +12,7 @@ find_package(catkin
 
 find_package(Boost REQUIRED COMPONENTS system)
 
-set(rnr_DIR /usr/lib/cmake/)
+set(rnr_DIR /prj/lib/rnr)
 find_package(rnr)
 
 #catkin_python_setup()
@@ -20,9 +20,11 @@ find_package(rnr)
 add_message_files(
   DIRECTORY msg
   FILES 
+    BrakeCmd.msg
     KuonState.msg
     KuonStatus.msg
-    MotorCommand.msg
+    SlewCmd.msg
+    SpeedCmd.msg
     Version.msg
 )
 
@@ -43,9 +45,10 @@ generate_messages(
 catkin_package(CATKIN_DEPENDS)
 
 add_executable(kuon_control 
-                 src/kuon_control_main.cpp 
-                 src/kuon_control.cpp 
-                 src/KuonRobot.cpp)
+  src/kuon_control_main.cpp 
+  src/kuon_control.cpp 
+  src/KuonRobot.cpp
+)
 
 include_directories(
   include 

@@ -57,9 +57,13 @@
 
 #include "ros/ros.h"
 
+#include "kuon_control/BrakeCmd.h"
 #include "kuon_control/EStop.h"
-#include "kuon_control/MotorCommand.h"
+#include "kuon_control/KuonState.h"
+#include "kuon_control/KuonStatus.h"
 #include "kuon_control/ResetEStop.h"
+#include "kuon_control/SlewCmd.h"
+#include "kuon_control/SpeedCmd.h"
 #include "kuon_control/QueryVersion.h"
 
 namespace kuon_control 
@@ -89,8 +93,13 @@ public:
                     kuon_control::QueryVersion::Response &rsp);
 
   // --- Subscriptions
+  void brake_cmdCB(const kuon_control::BrakeCmd &cmd);
+  void slew_cmdCB(const kuon_control::SlewCmd &cmd);
+  void speed_cmdCB(const kuon_control::SpeedCmd &cmd);
   
   // --- Publications
+  int PubStatus(kuon_control::KuonStatus &status);
+  int PubState(kuon_control::KuonState &state);
 
 
 protected:
