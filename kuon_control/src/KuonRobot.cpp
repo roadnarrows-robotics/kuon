@@ -79,22 +79,65 @@ int KuonRobot::connect()
 
 int KuonRobot::disconnect()
 {
+  RS160DEStop(m_fdFrontMots, m_fdRearMots);
+  RS160DClose(m_fdRearMots);
+  RS160DClose(m_fdFrontMots);
 }
 
 int KuonRobot::estop()
 {
+  RS160DEStop(m_fdFrontMots, m_fdRearMots);
 }
 
 int KuonRobot::setSpeeds(int left, int right)
 {
+  const int right_mot = 0;
+  const int left_mot  = 1;
+
+  RS160DUpdateMotorSpeeds(left, m_fdFrontMots, left_mot);
+  RS160DUpdateMotorSpeeds(right, m_fdFrontMots, right_mot);
+  RS160DUpdateMotorSpeeds(left, m_fdRearMots, left_mot);
+  RS160DUpdateMotorSpeeds(right, m_fdRearMots, right_mot);
 }
 
 int KuonRobot::setSlew(int s)
 {
+  const int right_mot = 0;
+  const int left_mot  = 1;
+
+  if (s > 40) 
+  {
+    s = 40;
+  }
+  else if (s < 0) 
+  {
+    s=0;
+  }
+
+  RS160DAlterSlew(s, m_fdFrontMots, left_mot);
+  RS160DAlterSlew(s, m_fdFrontMots, right_mot);
+  RS160DAlterSlew(s, m_fdFrontMots, left_mot);
+  RS160DAlterSlew(s, m_fdFrontMots, right_mot);
 }
 
 int KuonRobot::setBrake(int b)
 {
+  const int right_mot = 0;
+  const int left_mot  = 1;
+
+  if (b > 40) 
+  {
+    b = 40;
+  }
+  else if (b < 0) 
+  {
+    b=0;
+  }
+
+  RS160DAlterBraking(b, m_fdFrontMots, left_mot);
+  RS160DAlterBraking(b, m_fdFrontMots, right_mot);
+  RS160DAlterBraking(b, m_fdFrontMots, left_mot);
+  RS160DAlterBraking(b, m_fdFrontMots, right_mot);
 }
 
 

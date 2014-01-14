@@ -12,21 +12,8 @@ find_package(catkin
 
 find_package(Boost REQUIRED COMPONENTS system)
 
-# RDK, DHP TODO Create rnrpkgConfig.cmake
-# find_package(rnr
-#   REQUIRED COMPONENTS hekateros Dynamixel botsense netmsgs rnr_appkit rnr
-# WARNING:  The rnr libraries must of an unique name or other packages will
-#           clobber.
-# )
-find_library(
-  kuon_ctl_LIBRARIES
-  NAMES RS160D serial rnr 
-  PATHS /prj/lib /prj/lib/rnr
-)
-
-message("hey")
-message(${kuon_ctl_LIBRARIES})
-message("oooooooooooooooooooooo")
+set(rnr_DIR /usr/lib/cmake/)
+find_package(rnr)
 
 #catkin_python_setup()
 
@@ -62,13 +49,13 @@ add_executable(kuon_control
 
 include_directories(
   include 
-  /prj/include 
+  ${rnr_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
 )
 
 target_link_libraries(kuon_control 
-  ${kuon_ctl_LIBRARIES}
+  ${rnr_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
