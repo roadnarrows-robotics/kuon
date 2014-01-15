@@ -52,8 +52,9 @@
 #ifndef _KUON_ROBOT_H
 #define _KUON_ROBOT_H
 
-// TODO: - move this to 
+// TODO: - move this to libkuon 
 
+#include <stdio.h>
 #include <string.h>
 #include <string>
 
@@ -64,16 +65,17 @@ typedef struct KuonStatus
   bool isEStopped;
 } KuonStatus_T;
 
-typedef struct 
+typedef struct KuonState
 {
   // DHP - coming soon! as soon as we have encoders, etc
-} KuonState;
+} KuonState_T;
 
 class KuonRobot
 {
 public:
   KuonRobot()
   {
+    m_fGovernorVal = 0.1;
   }
 
   ~KuonRobot()
@@ -88,16 +90,22 @@ public:
   int setSlew(int s);
   int setBrake(int b);
   int estop();
+  int resetEStop(){m_bIsEstopped = false;}
+
+  KuonStatus_T updateStatus();
+  KuonState_T  updateState();
+  KuonStatus_T queryStatus(){return m_Status;}
+  KuonState_T  queryState(){return m_State;}
 
   bool isEStopped(){ return m_bIsEstopped;}
   float QueryGovernorVal(){ return m_fGovernorVal;}
   float SetGovernorVal(float v)
   {
-    if(v>1)
+    if(v>1.0)
     {
       v=1.0;
     }
-    else if(v<0)
+    else if(v<0.0)
     {
       v=0.0;
     }
@@ -108,6 +116,9 @@ public:
 protected: 
   int m_fdFrontMots;
   int m_fdRearMots;
+
+  KuonStatus_T m_Status;
+  KuonState_T  m_State;
 
   bool m_bIsEstopped;
   bool m_fGovernorVal;

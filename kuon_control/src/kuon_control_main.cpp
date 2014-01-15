@@ -51,8 +51,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <string>
+#include <stdio.h>
+
 #include "ros/ros.h"
 
+#include "rnr/log.h"
 #include "kuon_control.h"
 
 using namespace std;
@@ -62,7 +65,12 @@ const string &NodeName = "kuon_control";
 
 int main(int argc, char **argv)
 {
+  // set loglevel for RN libs
+  LOG_SET_THRESHOLD(LOG_LEVEL_DIAG3);
+
   KuonControlNode kuon;
+  kuon.setGovernor(0.25); //set governor to 25% of maximum power
+
   int seq = 0;
   int rc  = 0;
 
@@ -77,27 +85,42 @@ int main(int argc, char **argv)
     return rc;
   }
 
-#if 0
   // --- register services
-  ros::ServiceServer clear_alarms_ser   = n.advertiseService("clear_alarms", 
-                                                             ClearAlarms);
+  ros::ServiceServer estop         = n.advertiseService("estop", 
+                                      &KuonControlNode::EStop, &kuon);
+
+  ros::ServiceServer reset_estop   = n.advertiseService("reset_estop", 
+                                      &KuonControlNode::ResetEStop, &kuon);
+
+  ros::ServiceServer inc_governor  = n.advertiseService("increment_governor", 
+                                      &KuonControlNode::IncrementGovernor, 
+                                      &kuon);
+
+  //ros::ServiceServer query_version = n.advertiseService("reset_estop", 
+                                      //&KuonControlNode::QueryVersion, &kuon);
+
   ROS_INFO(" -- Services registered!");
 
+#if 0
   // --- register published topics
   ros::Publisher joint_states_pub = 
     n.advertise<sensor_msgs::JointState>("joint_states", 10);
   ROS_INFO(" -- Published topics registered!");
+#endif
 
   // --- register subscribed topics
-  ros::Subscriber joint_command_sub = n.subscribe("joint_command", 1, 
-                                                  joint_commandCB);
+  ros::Subscriber speed_cmd_sub = n.subscribe("speed_cmd", 1, 
+                                        &KuonControlNode::speed_cmdCB, &kuon);
+  ros::Subscriber brake_cmd_sub = n.subscribe("brake_cmd", 1, 
+                                        &KuonControlNode::brake_cmdCB, &kuon);
+  ros::Subscriber slew_cmd_sub = n.subscribe("slew_cmd", 1, 
+                                        &KuonControlNode::slew_cmdCB, &kuon);
   ROS_INFO(" -- Subscribed topics registered!");
-
-
   ros::Rate loop_rate(5);
   while(ros::ok())
   {
 
+    /*
     int n;
     if((n = updateJointStates(joint_states, joint_states_ex)) > 0)
     {
@@ -117,13 +140,14 @@ int main(int argc, char **argv)
       robot_status_ex_pub.publish(robot_status_ex);
     }
 
+    */
 
     ros::spinOnce(); 
+    kuon.checkWatchDog();
     loop_rate.sleep();
     ++seq;
   }
 
-#endif
 
   return 0;
 }

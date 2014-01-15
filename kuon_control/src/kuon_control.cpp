@@ -72,11 +72,15 @@ using namespace kuon_control;
 
 int KuonControlNode::connect()
 {
-  return m_pRobot->connect();
+  ROS_INFO("Connecting to Kuon Robot.");
+  int rc=0;
+  rc = m_pRobot->connect();
+  return rc;
 }
 
 int KuonControlNode::disconnect()
 {
+  ROS_INFO("Disconnecting from Kuon.");
   return m_pRobot->disconnect();
 }
 
@@ -92,18 +96,20 @@ bool KuonControlNode::ResetEStop(ResetEStop::Request &req,
                                  ResetEStop::Response &rsp)
 {
   ROS_DEBUG("Resetting estop state.");
+  m_pRobot->resetEStop();
   return true;
 }
 
 bool KuonControlNode::IncrementGovernor(IncrementGovernor::Request &req,
                                         IncrementGovernor::Response &rsp)
 {
-  ROS_DEBUG("Incrementing governor.");
+  ROS_INFO("Incrementing governor.");
   
   float v = m_pRobot->QueryGovernorVal();
   v += req.delta;
 
   rsp.value = m_pRobot->SetGovernorVal(v);
+  ROS_INFO("Governor set to %f", rsp.value);
   return true;
 }
 

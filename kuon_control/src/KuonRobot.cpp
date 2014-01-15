@@ -57,8 +57,8 @@
 #include "Kuon/RS160DControl.h"
 #include "KuonRobot.h"
 
-const char* dev0 = "/dev/ttyACM0";
-const char* dev1 = "/dev/ttyACM1";
+const char* dev0 = "/dev/ttyUSB0";
+const char* dev1 = "/dev/ttyUSB1";
 
 int KuonRobot::connect()
 {
@@ -92,17 +92,25 @@ int KuonRobot::disconnect()
 int KuonRobot::estop()
 {
   RS160DEStop(m_fdFrontMots, m_fdRearMots);
+  m_bIsEstopped = true;
 }
 
 int KuonRobot::setSpeeds(int left, int right)
 {
   if(m_bIsEstopped)
   {
+    fprintf(stderr,"Kuon estopped - aborting command\n");
     return 0;
   }
 
   const int right_mot = 0;
   const int left_mot  = 1;
+
+  fprintf(stderr, "Sending speed command: \n");
+  fprintf(stderr, "\t fds: %d %d\n", m_fdFrontMots, m_fdRearMots);
+  fprintf(stderr, "\t speeds: %d %d\n", left, right);
+  fprintf(stderr, "\t mots: %d %d\n", left_mot, right_mot);
+  fprintf(stderr, "\t governor: %f\n", m_fGovernorVal);
 
   RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdFrontMots, left_mot);
   RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdFrontMots, right_mot);
@@ -114,6 +122,7 @@ int KuonRobot::setSlew(int s)
 {
   if(m_bIsEstopped)
   {
+    fprintf(stderr,"Kuon estopped - aborting command\n");
     return 0;
   }
   const int right_mot = 0;
@@ -138,6 +147,7 @@ int KuonRobot::setBrake(int b)
 {
   if(m_bIsEstopped)
   {
+    fprintf(stderr,"Kuon estopped - aborting command\n");
     return 0;
   }
 

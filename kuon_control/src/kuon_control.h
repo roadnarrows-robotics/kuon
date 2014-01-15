@@ -77,6 +77,7 @@ public:
 
   KuonControlNode()
   {
+    m_pRobot = new KuonRobot();
   }
 
   ~KuonControlNode() {disconnect();}
@@ -100,18 +101,34 @@ public:
   // --- Subscriptions
   void brake_cmdCB(const kuon_control::BrakeCmd &cmd)
   {
+    ROS_INFO("received brake command: %d",cmd.val );
     m_pRobot->setBrake(cmd.val);
   }
 
   void slew_cmdCB(const kuon_control::SlewCmd &cmd)
   {
+    ROS_INFO("received slew command: %d",cmd.val);
     m_pRobot->setSlew(cmd.val);
   }
 
   void speed_cmdCB(const kuon_control::SpeedCmd &cmd)
   {
+    ROS_INFO("received speed command: %d %d",cmd.left, cmd.right);
+    m_nWatchDog = 5;
     m_pRobot->setSpeeds(cmd.left, cmd.right);
   }
+
+  void checkWatchDog()
+  {
+    if(m_nWatchDog-- <= 0)
+    {
+      m_nWatchDog = 0;
+      m_pRobot->setSpeeds(0,0);
+    }
+  }
+
+  void setGovernor(float v){m_pRobot->SetGovernorVal(v);}
+
   
   // --- Publications
   int UpdateStatus(kuon_control::KuonStatus &status)
@@ -119,12 +136,14 @@ public:
     status.is_estopped    = m_pRobot->isEStopped();
     status.governor_value = m_pRobot->QueryGovernorVal();
   }
+
   int UpdateState(kuon_control::KuonState &state);
 
 protected:
   KuonRobot *m_pRobot;      ///< Kuon robot handle
   bool       m_bIsEStopped; ///< Kuon is [not] estopped
   float      m_fGovernor;   ///< Normalized governor setting [min:0.0, max:1.0]
+  int        m_nWatchDog;   ///< passive keep-alive
 };
 
 }
