@@ -57,8 +57,8 @@
 #include "Kuon/RS160DControl.h"
 #include "KuonRobot.h"
 
-const char* dev0 = "/dev/ttyACM0";
-const char* dev1 = "/dev/ttyACM1";
+const char* dev0 = "/dev/ttyUSB0";
+const char* dev1 = "/dev/ttyUSB1";
 
 int KuonRobot::connect()
 {
@@ -92,6 +92,7 @@ int KuonRobot::disconnect()
 int KuonRobot::estop()
 {
   RS160DEStop(m_fdFrontMots, m_fdRearMots);
+  m_bIsEstopped = true;
 }
 
 int KuonRobot::setSpeeds(int left, int right)

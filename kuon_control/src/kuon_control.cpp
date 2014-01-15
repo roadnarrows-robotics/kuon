@@ -92,6 +92,7 @@ bool KuonControlNode::ResetEStop(ResetEStop::Request &req,
                                  ResetEStop::Response &rsp)
 {
   ROS_DEBUG("Resetting estop state.");
+  m_pRobot->resetEStop();
   return true;
 }
 
