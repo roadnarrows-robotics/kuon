@@ -48,25 +48,16 @@ import rospy
 from industrial_msgs.msg import RobotMode
 from industrial_msgs.msg import TriState
 
-from actionlib_msgs.msg import GoalStatus
-from kuon_control.calibrate_ac import *
-
-from kuon_control.msg import KuonRobotStatusExtended
-from kuon_control.msg import KuonJointStateExtended
-from kuon_control.msg import ServoHealth
-from kuon_control.msg import KuonOpState
-from kuon_control.msg import ProductInfo
-from kuon_control.srv import GotoParkedPos
-from kuon_control.srv import GotoBalancedPos
-from kuon_control.srv import GotoZeroPt
-from kuon_control.srv import OpenGripper
-from kuon_control.srv import CloseGripper
-from kuon_control.srv import EStop
-from kuon_control.srv import ResetEStop
-from kuon_control.srv import Freeze
-from kuon_control.srv import Release
-from kuon_control.srv import ClearAlarms
-from kuon_control.srv import GetProductInfo
+from kuon_control.msg import BrakeCmd           # publish
+from kuon_control.msg import KuonState          # subscribe (TBD)
+from kuon_control.msg import KuonStatus         # subscribe (TBD)
+from kuon_control.msg import SlewCmd            # publish
+from kuon_control.msg import SpeedCmd           # publish
+from kuon_control.msg import Version            # service
+from kuon_control.srv import IncrementGovernor  # service (TBD)
+from kuon_control.srv import EStop              # service
+from kuon_control.srv import ResetEStop         # service
+from kuon_control.srv import QueryVersion       # service (TBD)
 
 import actionlib
 import kuon_control.msg
@@ -100,21 +91,10 @@ configFileName = "kuon_panel.xml"
 ## \brief Configuration default.
 configDft = \
 {
-  'warn_on_calib':    True, # do [not] warn user at calibration start
-  'warn_on_release':  True, # do [not] warn user on release
-  'force_recalib':    True, # do [not] force recalibration on all joints
 }
 
 ## \brief Alarm strings.
 alarmStrings = {
-  ServoHealth.ALARM_NONE:         "ok",
-  ServoHealth.ALARM_VOLTAGE:      "V",
-  ServoHealth.ALARM_ANGLE:        "pos",
-  ServoHealth.ALARM_TEMP:         "T",
-  ServoHealth.ALARM_CMD_RANGE:    "",
-  ServoHealth.ALARM_CHECKSUM:     "",
-  ServoHealth.ALARM_LOAD:         "load",
-  ServoHealth.ALARM_INSTRUCTION:  ""
 }
 
 ## \brief Common foreground colors.
@@ -297,6 +277,7 @@ class configXml():
 # Class configDlg
 # ------------------------------------------------------------------------------
 
+"""
 class configDlg(Toplevel):
   #
   ## \brief Constructor.
@@ -456,6 +437,7 @@ class configDlg(Toplevel):
   #
   def close(self):
     self.destroy()
+"""
 
 
 # ------------------------------------------------------------------------------
@@ -907,7 +889,7 @@ class aboutDlg(Toplevel):
     self.m_prodName       = "Kuon"
     self.m_hwVer          = "1.0.0"
     self.m_prodId         = 0x00
-    self.m_prodBrief      = "Kuon Robotic Manipulator"
+    self.m_prodBrief      = "Kuon Outdoor Mobile Robot"
     self.m_rnUrl          = "http://www.roadnarrows.com/Kuon"
     self.m_rnEmail        = "support@roadnarrows.com"
     self.m_rnTel          = "+1.800.275.9568"
@@ -1229,13 +1211,6 @@ class window(Frame):
     wframe['relief'] = 'ridge'
     wframe.grid(row=1, column=0, padx=1, pady=3, sticky=N+W+E)
 
-    # calibrate
-    w = self.createButton(wframe, "Calibrate", "icons/icon_calib.png",
-                            self.calibrate)
-    w.grid(row=0, column=0, sticky=N+E+W)
-    self.m_icons['calibrate_cancel'] = loadIcon("icons/icon_calib_cancel.png")
-    self.m_keysNoMoves.append('calibrate')
-
     # park
     w = self.createButton(wframe, "Park", "icons/icon_kuon_park.png",
                             self.gotoParkedPos)
@@ -1291,7 +1266,7 @@ class window(Frame):
     self.m_wPanelFrame.grid(row=1, column=1, padx=1, pady=3, sticky=N+W+E)
 
     self.createRobotStatusPanel(self.m_wPanelFrame)
-    self.createJointStatePanelHdr(self.m_wPanelFrame)
+    self.createWheelStatePanelHdr(self.m_wPanelFrame)
 
   #
   ## \brief Create robot status upper center panel.
@@ -1453,17 +1428,17 @@ class window(Frame):
   ##
   ## \param parent  Parent widget
   #
-  def createJointStatePanelHdr(self, parent):
+  def createWheelStatePanelHdr(self, parent):
     wframe = Frame(parent)
     wframe['borderwidth'] = 2
     wframe['relief'] = 'ridge'
     wframe.grid(row=1, column=0, padx=1, pady=3, sticky=N+W+E)
-    self.m_wJointStateFrame = wframe
+    self.m_wWheelStateFrame = wframe
 
     # heading
     w = Label(wframe)
     w['font'] =('Helvetica', 12)
-    w['text'] = 'Joint State'
+    w['text'] = 'Kuon State'
     w['anchor'] = CENTER
     w.grid(row=0, column=0, columnspan=10, sticky=E+W)
 
@@ -1478,150 +1453,20 @@ class window(Frame):
         'Velocity(%max)', 'Speed(raw)',
         'Effort(raw)', 'Temperature(C)', 'Voltage(volts)',
         'Alarms']:
-      w = Label(wframe, width=width, padx=padx, pady=pady, anchor=E,
-                text=text+':')
-      w.grid(row=row, column=0, sticky=W)
-      row += 1
+      break
+      #w = Label(wframe, width=width, padx=padx, pady=pady, anchor=E,
+      #          text=text+':')
+      #w.grid(row=row, column=0, sticky=W)
+      #row += 1
 
   #
   ## \brief Create joint state lower center panel state.
   ##
-  ## \param joint   Joint state
+  ## \param wheels Wheel state message.
   #
-  def createJointStatePanel(self, joint):
-    wframe = self.m_wJointStateFrame
-
+  def createWheelStatePanel(self, wheels):
+    wframe = self.m_wWheelStateFrame
     width = 12
-
-    for i in range(0, len(joint.name)):
-      name = joint.name[i]
-      self.m_robotJoint[name] = {}
-
-      col = 1 + i
-
-      # joint
-      w = Label(wframe, anchor=W, text=name)
-      w['width'] = width
-      w.grid(row=1, column=col, sticky=W)
-
-      # master servo id
-      var = IntVar()
-      var.set(ord(joint.master_servo_id[i]))
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=2, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['servo_id'] = d
-      self.m_robotServo[ord(joint.master_servo_id[i])] = name
-    
-      # joint state
-      var = StringVar()
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=3, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['state'] = d
-    
-      # position
-      var = DoubleVar()
-      var.set(0.0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=4, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['position'] = d
-    
-      # odometer
-      var = IntVar()
-      var.set(0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=5, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['odometer'] = d
-    
-      # encoder
-      var = IntVar()
-      var.set(0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=6, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['encoder'] = d
-    
-      # velocity
-      var = DoubleVar()
-      var.set(0.0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=7, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['velocity'] = d
-    
-      # raw speed
-      var = IntVar()
-      var.set(0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=8, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['speed'] = d
-    
-      # raw effort
-      var = IntVar()
-      var.set(0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=9, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['effort'] = d
-    
-      # temperature
-      var = IntVar()
-      var.set(0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=10, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['temperature'] = d
-    
-      # voltage
-      var = DoubleVar()
-      var.set(0.0)
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                        fg=fgColors['normal'], state='readonly')
-      w['width'] = width
-      w.grid(row=11, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['voltage'] = d
-    
-      # alarms
-      var = StringVar()
-      var.set("ok")
-      w = Entry(wframe, relief='flat', justify=LEFT, textvar=var,
-                            fg=fgColors['ok'], state='readonly')
-      w['width'] = width
-      w.grid(row=12, column=col, padx=1, pady=0, sticky=W)
-      d = {'var': var, 'w': w}
-      self.m_robotJoint[name]['alarms'] = d
-
-      self.update_idletasks()
-
-    # left labels column width + pading + number of joints * column width
-    totWidth = 12 + 10 + len(joint.name) * width
-
-    self.adjustWidthRobotStatusPanel(totWidth)
-
-    self.m_bHasJointPanel = True
     
   #
   ## \brief Create gui right hand side buttons.
@@ -1657,9 +1502,9 @@ class window(Frame):
     self.m_keysNoMoves.append('clear_alarms')
 
     # settings
-    w = self.createButton(wframe, "Settings",
-                                  "icons/icon_settings.png", self.settings)
-    w.grid(row=4, column=0, sticky=N+E+W)
+    # RDK w = self.createButton(wframe, "Settings",
+    # RDK                             "icons/icon_settings.png", self.settings)
+    # RDK w.grid(row=4, column=0, sticky=N+E+W)
 
     # info
     w = self.createButton(wframe, "About",
@@ -1681,7 +1526,7 @@ class window(Frame):
     wframe.grid(row=2, column=0, columnspan=3, padx=1, pady=3, sticky=N+E+W+S)
 
     self.m_varStatus = StringVar()
-    self.m_varStatus.set("Calibration required.")
+    self.m_varStatus.set("")
     self.m_wStatusBar = Entry(wframe)
     self.m_wStatusBar['width']    = wframe['width']
     self.m_wStatusBar['relief']   = 'flat'
@@ -1734,87 +1579,6 @@ class window(Frame):
   def destroy(self):
     self.quit()
 
-  #
-  ## \brief (Cancel) calibration callback.
-  #
-  def calibrate(self):
-    # not calibrating - so start calibration
-    if not self.m_calibState['calibrating']:
-      if self.m_config['warn_on_calib']:
-        dlg = warnDlg(master=self,
-                      image="KuonZeroPt128.png",
-                      msg="""\
-For best calibration, place the Kuon near the zero point.
-Make sure the workspace is clear of obstructions.""")
-        if not dlg.m_result:
-          return
-      self.m_calibState['calibrating'] = True
-      self.m_wBttn['calibrate']['image'] = self.m_icons['calibrate_cancel']
-      self.m_wBttn['calibrate']['text'] = "Cancel\nCalibrate"
-      self.showInfo("Calibrating Kuon.")
-      self.update_idletasks()
-
-      # create calibration action client, if not already created
-      if self.m_calibState['ac'] is None:
-        self.m_calibState['ac'] = calibrate_ac()
-
-      # start calibration
-      if not self.m_calibState['ac'].exec_calib(self.calibrate_monitor,
-                                  timeout=1,
-                                  force_recalib=self.m_config['force_recalib']):
-        self.showError("Could not execute calibration. " \
-                       "Is the kuon_control node running?")
-        self.calibrate_cancel()
-
-      # check for completion
-      else:
-        self.m_calibState['id'] = self.after(100, self.calibrate_check_for_done)
-
-    # calibrating - so cancel
-    else:
-      self.calibrate_cancel()
-      self.showInfo("Calibration canceled.")
-      
-  #
-  ## \brief Cancel calibration, setting data and widget state accordingly.
-  #
-  def calibrate_cancel(self):
-      self.m_calibState['ac'].cancel()
-      self.m_calibState['calibrating'] = False
-      self.m_wBttn['calibrate']['image'] = self.m_icons['calibrate']
-      self.m_wBttn['calibrate']['text'] = "Calibrate"
-      if self.m_calibState['id'] != 0:
-        self.m_calibState['id'] = 0
-      self.update_idletasks()
-
-  #
-  ## \brief Check if calibration is complete.
-  #
-  def calibrate_check_for_done(self):
-    state = self.m_calibState['ac'].get_action_state()
-    if state == GoalStatus.PENDING or \
-       state == GoalStatus.ACTIVE or \
-       state == GoalStatus.PREEMPTING or \
-       state == GoalStatus.RECALLING:
-      self.m_calibState['id'] = self.after(100, self.calibrate_check_for_done)
-    else:
-      self.m_wBttn['calibrate']['image'] = self.m_icons['calibrate']
-      self.m_wBttn['calibrate']['text'] = "Calibrate"
-      self.m_calibState['calibrating'] = False
-      self.m_calibState['id'] = 0
-      if self.m_calibState['ac'].get_result() >= 0:
-        self.showInfo("Calibration complete.")
-      else:
-        self.showError("Calibration failed.")
-      self.update_idletasks()
-
-  #
-  ## @brief monitor the calibration feedback
-  #
-  def calibrate_monitor(self, fb):
-    if self.m_bHasJointPanel:
-      self.showJointStates(fb.joint)
-  
   #
   ## \brief Go to parked position callback.
   #
@@ -2047,9 +1811,9 @@ The arm may fall if not in a stable position.""")
   #
   ## \brief Open settings dialog callback.
   #
-  def settings(self):
-    dlg = configDlg(master=self, config=self.m_config)
-    self.m_config = dlg.m_config
+  # RDK def settings(self):
+  # RDK   dlg = configDlg(master=self, config=self.m_config)
+  # RDK   self.m_config = dlg.m_config
   
   #
   ## \brief Show about dialog callback.
@@ -2086,18 +1850,17 @@ The arm may fall if not in a stable position.""")
   #
   ## \brief Update joint state.
   ##
-  ## \param joint  Joint state extended message.
+  ## \param wheels Wheel state message.
   #
-  def updateJointStates(self, joint):
+  def updateWheelStates(self, wheels):
     # no joints
     if len(joint.name) == 0:
       return
 
     # first state message, 
     if not self.m_bHasJointPanel:
-      self.createJointStatePanel(joint)
-
-    self.showJointStates(joint)
+      self.createWheelStatePanel(wheels)
+    self.showWheelStates(wheels)
 
   #
   ## \brief Show robot status.
@@ -2122,19 +1885,6 @@ The arm may fall if not in a stable position.""")
       else:
         state = 'normal'
       self.updateButtonState(self.m_keysNoMoves, state)
-
-    key = 'calibration'
-    if self.m_robotStatus[key]['val'] != status.is_calibrated.val:
-      text, fg = self.toCalib(status.is_calibrated.val)
-      self.m_robotStatus[key]['val'] = status.is_calibrated.val
-      self.showEntry(self.m_robotStatus[key]['w'],
-                     self.m_robotStatus[key]['var'], text, fg)
-      if status.is_calibrated.val == TriState.TRUE:
-        state = 'normal'
-      else:
-        state = 'disabled'
-      if not bNoMoves:
-        self.updateButtonState(self.m_keysFewMoves, state)
 
     key = 'motors'
     if self.m_robotStatus[key]['val'] != status.drives_powered.val:
@@ -2175,58 +1925,16 @@ The arm may fall if not in a stable position.""")
   #
   ## \brief Show joint state.
   ##
-  ## \param joint  Joint state extended message.
+  ## \param wheels Wheel state message.
   #
-  def showJointStates(self, joint):
-    for i in range(0, len(joint.name)):
-      name = joint.name[i]
-      if not self.m_robotJoint.has_key(name):
-        continue
+  def showWheelStates(self, wheels):
+    pass
+      #key = 'state'
+      #val, fg = self.toWheelState(joint.op_state[i].calib_state)
+      #if self.m_robotJoint[name][key]['var'].get() != val:
+      #  self.showEntry(self.m_robotJoint[name][key]['w'],
+      #               self.m_robotJoint[name][key]['var'], val, fg)
 
-      key = 'state'
-      val, fg = self.toJointState(joint.op_state[i].calib_state)
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], val, fg)
-
-      key = 'position'
-      val, fg = self.toDeg(joint.position[i])
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], val, fg)
-
-      key = 'odometer'
-      val = joint.odometer_pos[i]
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'],
-                     val, fgColors['normal'])
-
-      key = 'encoder'
-      val = joint.encoder_pos[i]
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'],
-                     val, fgColors['normal'])
-
-      key = 'velocity'
-      val, fg = self.toVelocity(joint.velocity[i])
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], val, fg)
-
-      key = 'speed'
-      val = joint.raw_speed[i]
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'],
-                     val, fgColors['normal'])
-
-      key = 'effort'
-      val, fg = self.toEffort(joint.effort[i])
-      if self.m_robotJoint[name][key]['var'].get() != val:
-        self.showEntry(self.m_robotJoint[name][key]['w'],
-                     self.m_robotJoint[name][key]['var'], val, fg)
 
   #
   ## \brief Show servo health.
@@ -2305,14 +2013,6 @@ The arm may fall if not in a stable position.""")
     else:
       return (repr(mode), fgColors['error'])
 
-  def toCalib(self, tristate):
-    if tristate == TriState.FALSE:
-      return ("Not calibrated", fgColors['normal'])
-    elif tristate == TriState.TRUE:
-      return ("Calibrated", fgColors['normal'])
-    else:
-      return (repr(tristate), fgColors['error'])
-
   def toMotorsPowered(self, tristate):
     if tristate == TriState.FALSE:
       return ("Motors unpowered", fgColors['normal'])
@@ -2321,7 +2021,7 @@ The arm may fall if not in a stable position.""")
     else:
       return (repr(tristate), fgColors['error'])
 
-  def toJointState(self, opstate):
+  def toWheelState(self, opstate):
       if opstate == KuonOpState.UNCALIBRATED:
         return ("uncalibrated", fgColors['error'])
       elif opstate == KuonOpState.CALIBRATING:
@@ -2486,14 +2186,14 @@ Options and arguments:
     rospy.init_node("kuon_panel")
 
     # subscribe to extended robot status data
-    rospy.Subscriber("kuon_control/robot_status_ex", 
-                     KuonRobotStatusExtended, 
+    rospy.Subscriber("kuon_control/kuon_status", 
+                     KuonStatus, 
                      self.updateRobotStatus) 
 
     # subscribe to extended joint state data
-    rospy.Subscriber("kuon_control/joint_states_ex", 
-                     KuonJointStateExtended, 
-                     self.updateJointStates) 
+    rospy.Subscriber("kuon_control/kuon_state", 
+                     KuonState, 
+                     self.updateWheelStates) 
 
     # publish trajectory to kuon controller
     self.m_joint_cmd_pub = rospy.Publisher("kuon_control/joint_command",
@@ -2514,8 +2214,8 @@ Options and arguments:
   ##
   ## \param msg   Received message.
   #
-  def updateJointStates(self, msg):
-    self.m_win.updateJointStates(msg)
+  def updateWheelStates(self, msg):
+    self.m_win.updateWheelStates(msg)
 
   #
   ## \brief Move robot along trajectory
