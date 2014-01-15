@@ -60,7 +60,7 @@
 
 #include "rnr/serdev.h"
 
-typedef struct KuonStatus
+typedef struct KuonStatusStruct
 {
   bool mode;   // false = manual, true = auto
   bool drives_powered;   // always true
@@ -71,7 +71,7 @@ typedef struct KuonStatus
   bool e_stopped;    // true or false
 } KuonStatus_T;
 
-typedef struct KuonState
+typedef struct KuonStateStruct
 {
   // DHP - coming soon! as soon as we have encoders, etc
 } KuonState_T;

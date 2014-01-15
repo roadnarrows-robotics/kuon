@@ -131,10 +131,16 @@ public:
 
   
   // --- Publications
-  int UpdateStatus(kuon_control::KuonStatus &status)
+  int UpdateStatus(kuon_control::KuonStatus *status)
   {
-    status.e_stopped    = m_pRobot->isEStopped();
-    status.governor_value = m_pRobot->QueryGovernorVal();
+    KuonStatus_T s2 = m_pRobot->updateStatus();
+    status->e_stopped = s2.e_stopped;
+    status->mode = s2.mode;
+    status->drives_powered = s2.drives_powered;
+    status->in_motion = s2.in_motion;
+    status->in_error = s2.in_error;
+    status->governor_value = s2.governor_value;
+    return 0;
   }
 
   int UpdateState(kuon_control::KuonState &state);

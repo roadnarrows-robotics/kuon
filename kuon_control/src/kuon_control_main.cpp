@@ -56,6 +56,7 @@
 #include "ros/ros.h"
 
 #include "rnr/log.h"
+#include "kuon_control/KuonStatus.h"
 #include "kuon_control.h"
 
 using namespace std;
@@ -101,12 +102,9 @@ int main(int argc, char **argv)
 
   ROS_INFO(" -- Services registered!");
 
-#if 0
-  // --- register published topics
-  ros::Publisher joint_states_pub = 
-    n.advertise<sensor_msgs::JointState>("joint_states", 10);
+  ros::Publisher kuon_status = 
+    n.advertise<KuonStatus>("kuon_status", 5);
   ROS_INFO(" -- Published topics registered!");
-#endif
 
   // --- register subscribed topics
   ros::Subscriber speed_cmd_sub = n.subscribe("speed_cmd", 1, 
@@ -120,27 +118,9 @@ int main(int argc, char **argv)
   while(ros::ok())
   {
 
-    /*
-    int n;
-    if((n = updateJointStates(joint_states, joint_states_ex)) > 0)
-    {
-      joint_states.header.seq=seq;
-      joint_states_pub.publish(joint_states);
-
-      joint_states_ex.header.seq=seq;
-      joint_states_ex_pub.publish(joint_states_ex);
-    }
-
-    if(updateRobotStatus(robot_status, robot_status_ex) == 0)
-    {
-      robot_status.header.seq=seq;
-      robot_status_pub.publish(robot_status);
-
-      robot_status.header.seq=seq;
-      robot_status_ex_pub.publish(robot_status_ex);
-    }
-
-    */
+    KuonStatus s;
+    kuon.UpdateStatus(&s);
+    //kuon_status.publish(s);
 
     ros::spinOnce(); 
     kuon.checkWatchDog();
