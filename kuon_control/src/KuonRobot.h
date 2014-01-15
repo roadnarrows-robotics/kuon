@@ -109,6 +109,7 @@ public:
 
     s.governor_value = m_fGovernorVal;
     fprintf(stderr, " governor value = %f\n", m_fGovernorVal);
+    return s;
   }
   KuonState_T  updateState();
   KuonStatus_T queryStatus(){return m_Status;}
