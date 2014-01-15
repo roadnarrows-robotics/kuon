@@ -119,7 +119,7 @@ int main(int argc, char **argv)
   {
 
     KuonStatus s;
-    kuon.UpdateStatus(*s);
+    kuon.UpdateStatus(&s);
     kuon_status.publish(s);
 
     ros::spinOnce(); 
