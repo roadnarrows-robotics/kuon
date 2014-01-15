@@ -65,9 +65,10 @@ target_link_libraries(kuon_control
 
 add_dependencies(kuon_control kuon_control_gencpp)
 
-#install(
-#PROGRAMS 
-#scripts/joint_trajectory_demo 
-#DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-#)
+install(
+  PROGRAMS 
+  scripts/kuon_panel
+  scripts/kuon_teleop
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
