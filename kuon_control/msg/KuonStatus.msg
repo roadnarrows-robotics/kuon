@@ -1,1 +1,2 @@
-float32 governor_val
+float32 governor_value
+bool is_estopped

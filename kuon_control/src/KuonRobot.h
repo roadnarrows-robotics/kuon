@@ -52,10 +52,22 @@
 #ifndef _KUON_ROBOT_H
 #define _KUON_ROBOT_H
 
+// TODO: - move this to 
+
 #include <string.h>
 #include <string>
 
 #include "rnr/serdev.h"
+
+typedef struct KuonStatus
+{
+  bool isEStopped;
+} KuonStatus_T;
+
+typedef struct 
+{
+  // DHP - coming soon! as soon as we have encoders, etc
+} KuonState;
 
 class KuonRobot
 {
@@ -77,9 +89,28 @@ public:
   int setBrake(int b);
   int estop();
 
+  bool isEStopped(){ return m_bIsEstopped;}
+  float QueryGovernorVal(){ return m_fGovernorVal;}
+  float SetGovernorVal(float v)
+  {
+    if(v>1)
+    {
+      v=1.0;
+    }
+    else if(v<0)
+    {
+      v=0.0;
+    }
+
+    return m_fGovernorVal = v;
+  };
+
 protected: 
   int m_fdFrontMots;
   int m_fdRearMots;
+
+  bool m_bIsEstopped;
+  bool m_fGovernorVal;
 };
 
 #endif // _KUON_ROBOT_H

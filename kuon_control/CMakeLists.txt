@@ -32,6 +32,7 @@ add_service_files(
   DIRECTORY srv
   FILES
     EStop.srv
+    IncrementGovernor.srv
     QueryVersion.srv
     ResetEStop.srv
 )

@@ -57,15 +57,18 @@
 #include "Kuon/RS160DControl.h"
 #include "KuonRobot.h"
 
+const char* dev0 = "/dev/ttyACM0";
+const char* dev1 = "/dev/ttyACM1";
+
 int KuonRobot::connect()
 {
   int error = 0;
-  error = RS160DOpenConnection("/dev/ttyACM0",&m_fdFrontMots);
+  error = RS160DOpenConnection(dev0, &m_fdFrontMots);
   if(error < 0) {
     LOGDIAG2("Failed to open front motor controller");
     exit(1);
   }
-  error = RS160DOpenConnection("/dev/ttyACM1",&m_fdRearMots);
+  error = RS160DOpenConnection(dev1, &m_fdRearMots);
   if(error < 0) {
     exit(1);
   }
@@ -93,17 +96,26 @@ int KuonRobot::estop()
 
 int KuonRobot::setSpeeds(int left, int right)
 {
+  if(m_bIsEstopped)
+  {
+    return 0;
+  }
+
   const int right_mot = 0;
   const int left_mot  = 1;
 
-  RS160DUpdateMotorSpeeds(left, m_fdFrontMots, left_mot);
-  RS160DUpdateMotorSpeeds(right, m_fdFrontMots, right_mot);
-  RS160DUpdateMotorSpeeds(left, m_fdRearMots, left_mot);
-  RS160DUpdateMotorSpeeds(right, m_fdRearMots, right_mot);
+  RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdFrontMots, left_mot);
+  RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdFrontMots, right_mot);
+  RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdRearMots,  left_mot);
+  RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdRearMots,  right_mot);
 }
 
 int KuonRobot::setSlew(int s)
 {
+  if(m_bIsEstopped)
+  {
+    return 0;
+  }
   const int right_mot = 0;
   const int left_mot  = 1;
 
@@ -124,12 +136,17 @@ int KuonRobot::setSlew(int s)
 
 int KuonRobot::setBrake(int b)
 {
+  if(m_bIsEstopped)
+  {
+    return 0;
+  }
+
   const int right_mot = 0;
   const int left_mot  = 1;
 
-  if (b > 40) 
+  if (b > 31) 
   {
-    b = 40;
+    b = 31;
   }
   else if (b < 0) 
   {

@@ -59,12 +59,14 @@
 
 #include "kuon_control/BrakeCmd.h"
 #include "kuon_control/EStop.h"
+#include "kuon_control/IncrementGovernor.h"
 #include "kuon_control/KuonState.h"
 #include "kuon_control/KuonStatus.h"
+#include "kuon_control/QueryVersion.h"
 #include "kuon_control/ResetEStop.h"
 #include "kuon_control/SlewCmd.h"
 #include "kuon_control/SpeedCmd.h"
-#include "kuon_control/QueryVersion.h"
+#include "kuon_control/Version.h"
 
 namespace kuon_control 
 {
@@ -92,18 +94,35 @@ public:
   bool QueryVersion(kuon_control::QueryVersion::Request &req,
                     kuon_control::QueryVersion::Response &rsp);
 
+  bool IncrementGovernor(kuon_control::IncrementGovernor::Request &req,
+                         kuon_control::IncrementGovernor::Response &rsp);
+
   // --- Subscriptions
-  void brake_cmdCB(const kuon_control::BrakeCmd &cmd);
-  void slew_cmdCB(const kuon_control::SlewCmd &cmd);
-  void speed_cmdCB(const kuon_control::SpeedCmd &cmd);
+  void brake_cmdCB(const kuon_control::BrakeCmd &cmd)
+  {
+    m_pRobot->setBrake(cmd.val);
+  }
+
+  void slew_cmdCB(const kuon_control::SlewCmd &cmd)
+  {
+    m_pRobot->setSlew(cmd.val);
+  }
+
+  void speed_cmdCB(const kuon_control::SpeedCmd &cmd)
+  {
+    m_pRobot->setSpeeds(cmd.left, cmd.right);
+  }
   
   // --- Publications
-  int PubStatus(kuon_control::KuonStatus &status);
-  int PubState(kuon_control::KuonState &state);
-
+  int UpdateStatus(kuon_control::KuonStatus &status)
+  {
+    status.is_estopped    = m_pRobot->isEStopped();
+    status.governor_value = m_pRobot->QueryGovernorVal();
+  }
+  int UpdateState(kuon_control::KuonState &state);
 
 protected:
-  KuonRobot *m_pRobot;        ///< Kuon robot handle
+  KuonRobot *m_pRobot;      ///< Kuon robot handle
   bool       m_bIsEStopped; ///< Kuon is [not] estopped
   float      m_fGovernor;   ///< Normalized governor setting [min:0.0, max:1.0]
 };

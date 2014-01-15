@@ -54,12 +54,15 @@
 
 #include "KuonRobot.h"
 
+#include "kuon_control/BrakeCmd.h"
 #include "kuon_control/EStop.h"
+#include "kuon_control/IncrementGovernor.h"
 #include "kuon_control/KuonState.h"
 #include "kuon_control/KuonStatus.h"
-#include "kuon_control/MotorCommand.h"
 #include "kuon_control/QueryVersion.h"
 #include "kuon_control/ResetEStop.h"
+#include "kuon_control/SlewCmd.h"
+#include "kuon_control/SpeedCmd.h"
 #include "kuon_control/Version.h"
 
 #include "kuon_control.h"
@@ -89,6 +92,18 @@ bool KuonControlNode::ResetEStop(ResetEStop::Request &req,
                                  ResetEStop::Response &rsp)
 {
   ROS_DEBUG("Resetting estop state.");
+  return true;
+}
+
+bool KuonControlNode::IncrementGovernor(IncrementGovernor::Request &req,
+                                        IncrementGovernor::Response &rsp)
+{
+  ROS_DEBUG("Incrementing governor.");
+  
+  float v = m_pRobot->QueryGovernorVal();
+  v += req.delta;
+
+  rsp.value = m_pRobot->SetGovernorVal(v);
   return true;
 }
 
