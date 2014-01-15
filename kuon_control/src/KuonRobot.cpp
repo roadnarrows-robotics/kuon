@@ -100,6 +100,7 @@ int KuonRobot::setSpeeds(int left, int right)
   if(m_bIsEstopped)
   {
     fprintf(stderr,"Kuon estopped - aborting command\n");
+    m_bInMotion = false;
     return 0;
   }
 
@@ -112,6 +113,7 @@ int KuonRobot::setSpeeds(int left, int right)
   fprintf(stderr, "\t mots: %d %d\n", left_mot, right_mot);
   fprintf(stderr, "\t governor: %f\n", m_fGovernorVal);
 
+  m_bInMotion = true;
   RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdFrontMots, left_mot);
   RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdFrontMots, right_mot);
   RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdRearMots,  left_mot);

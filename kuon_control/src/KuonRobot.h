@@ -62,7 +62,13 @@
 
 typedef struct KuonStatus
 {
-  bool isEStopped;
+  bool mode;   // false = manual, true = auto
+  bool drives_powered;   // always true
+  bool in_motion;    // true or false
+  bool in_error;     // always false
+
+  float governor_value;  // 0 to 1
+  bool e_stopped;    // true or false
 } KuonStatus_T;
 
 typedef struct KuonState
@@ -92,7 +98,17 @@ public:
   int estop();
   int resetEStop(){m_bIsEstopped = false;}
 
-  KuonStatus_T updateStatus();
+  KuonStatus_T updateStatus()
+  {
+    KuonStatus_T s;
+    s.e_stopped = m_bIsEstopped;
+    s.mode = true;
+    s.drives_powered = true;
+    s.in_motion = m_bInMotion;
+    s.in_error = false;
+
+    s.governor_value = m_fGovernorVal;
+  }
   KuonState_T  updateState();
   KuonStatus_T queryStatus(){return m_Status;}
   KuonState_T  queryState(){return m_State;}
@@ -121,7 +137,8 @@ protected:
   KuonState_T  m_State;
 
   bool m_bIsEstopped;
-  bool m_fGovernorVal;
+  bool m_bInMotion;
+  float m_fGovernorVal;
 };
 
 #endif // _KUON_ROBOT_H

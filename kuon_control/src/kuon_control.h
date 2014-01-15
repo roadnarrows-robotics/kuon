@@ -133,7 +133,7 @@ public:
   // --- Publications
   int UpdateStatus(kuon_control::KuonStatus &status)
   {
-    status.is_estopped    = m_pRobot->isEStopped();
+    status.e_stopped    = m_pRobot->isEStopped();
     status.governor_value = m_pRobot->QueryGovernorVal();
   }
 
