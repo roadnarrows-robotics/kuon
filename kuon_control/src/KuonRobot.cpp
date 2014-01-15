@@ -104,6 +104,11 @@ int KuonRobot::setSpeeds(int left, int right)
     return 0;
   }
 
+  if( (left==0) && (right==0) )
+  {
+    m_bInMotion = false;
+  }
+
   const int right_mot = 0;
   const int left_mot  = 1;
 
