@@ -114,8 +114,19 @@ public:
   void speed_cmdCB(const kuon_control::SpeedCmd &cmd)
   {
     ROS_INFO("received speed command: %d %d",cmd.left, cmd.right);
+    m_nWatchDog = 5;
     m_pRobot->setSpeeds(cmd.left, cmd.right);
   }
+
+  void checkWatchDog()
+  {
+    if(m_nWatchDog-- <= 0)
+    {
+      m_nWatchDog = 0;
+      m_pRobot->setSpeeds(0,0);
+    }
+  }
+
   
   // --- Publications
   int UpdateStatus(kuon_control::KuonStatus &status)
@@ -130,6 +141,7 @@ protected:
   KuonRobot *m_pRobot;      ///< Kuon robot handle
   bool       m_bIsEStopped; ///< Kuon is [not] estopped
   float      m_fGovernor;   ///< Normalized governor setting [min:0.0, max:1.0]
+  int        m_nWatchDog;   ///< passive keep-alive
 };
 
 }

@@ -138,6 +138,7 @@ fprintf(stderr,"dhp4\n");
     */
 
     ros::spinOnce(); 
+    kuon.checkWatchDog();
     loop_rate.sleep();
     ++seq;
   }
