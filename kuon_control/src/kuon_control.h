@@ -77,6 +77,7 @@ public:
 
   KuonControlNode()
   {
+    m_pRobot = new KuonRobot();
   }
 
   ~KuonControlNode() {disconnect();}
@@ -100,16 +101,19 @@ public:
   // --- Subscriptions
   void brake_cmdCB(const kuon_control::BrakeCmd &cmd)
   {
+ROS_INFO("received brake command: %d",cmd.val );
     m_pRobot->setBrake(cmd.val);
   }
 
   void slew_cmdCB(const kuon_control::SlewCmd &cmd)
   {
+ROS_INFO("received brake command: %d",cmd.val);
     m_pRobot->setSlew(cmd.val);
   }
 
   void speed_cmdCB(const kuon_control::SpeedCmd &cmd)
   {
+ROS_INFO("received brake command: %d %d",cmd.left, cmd.right);
     m_pRobot->setSpeeds(cmd.left, cmd.right);
   }
   

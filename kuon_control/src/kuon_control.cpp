@@ -72,7 +72,9 @@ using namespace kuon_control;
 
 int KuonControlNode::connect()
 {
-  return m_pRobot->connect();
+  int rc=0;
+  rc = m_pRobot->connect();
+  return rc;
 }
 
 int KuonControlNode::disconnect()

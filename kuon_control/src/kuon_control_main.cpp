@@ -51,8 +51,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <string>
+#include <stdio.h>
+
 #include "ros/ros.h"
 
+#include "rnr/log.h"
 #include "kuon_control.h"
 
 using namespace std;
@@ -62,6 +65,9 @@ const string &NodeName = "kuon_control";
 
 int main(int argc, char **argv)
 {
+  // set loglevel for RN libs
+  LOG_SET_THRESHOLD(LOG_LEVEL_DIAG3);
+
   KuonControlNode kuon;
   int seq = 0;
   int rc  = 0;
@@ -84,6 +90,7 @@ int main(int argc, char **argv)
   ros::ServiceServer reset_estop   = n.advertiseService("reset_estop", 
                                       &KuonControlNode::ResetEStop, &kuon);
 
+fprintf(stderr,"dhp4\n");
   //ros::ServiceServer query_version = n.advertiseService("reset_estop", 
                                       //&KuonControlNode::QueryVersion, &kuon);
 
