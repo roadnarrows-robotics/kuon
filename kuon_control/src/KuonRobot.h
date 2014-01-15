@@ -52,8 +52,9 @@
 #ifndef _KUON_ROBOT_H
 #define _KUON_ROBOT_H
 
-// TODO: - move this to 
+// TODO: - move this to libkuon 
 
+#include <stdio.h>
 #include <string.h>
 #include <string>
 

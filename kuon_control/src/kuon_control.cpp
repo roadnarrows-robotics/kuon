@@ -72,6 +72,7 @@ using namespace kuon_control;
 
 int KuonControlNode::connect()
 {
+  ROS_INFO("Connecting to Kuon Robot.");
   int rc=0;
   rc = m_pRobot->connect();
   return rc;
@@ -79,6 +80,7 @@ int KuonControlNode::connect()
 
 int KuonControlNode::disconnect()
 {
+  ROS_INFO("Disconnecting from Kuon.");
   return m_pRobot->disconnect();
 }
 
