@@ -69,6 +69,8 @@ int main(int argc, char **argv)
   LOG_SET_THRESHOLD(LOG_LEVEL_DIAG3);
 
   KuonControlNode kuon;
+  kuon.setGovernor(0.25); //set governor to 25% of maximum power
+
   int seq = 0;
   int rc  = 0;
 
@@ -90,7 +92,10 @@ int main(int argc, char **argv)
   ros::ServiceServer reset_estop   = n.advertiseService("reset_estop", 
                                       &KuonControlNode::ResetEStop, &kuon);
 
-fprintf(stderr,"dhp4\n");
+  ros::ServiceServer inc_governor  = n.advertiseService("increment_governor", 
+                                      &KuonControlNode::IncrementGovernor, 
+                                      &kuon);
+
   //ros::ServiceServer query_version = n.advertiseService("reset_estop", 
                                       //&KuonControlNode::QueryVersion, &kuon);
 

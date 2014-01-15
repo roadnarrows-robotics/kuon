@@ -103,12 +103,13 @@ bool KuonControlNode::ResetEStop(ResetEStop::Request &req,
 bool KuonControlNode::IncrementGovernor(IncrementGovernor::Request &req,
                                         IncrementGovernor::Response &rsp)
 {
-  ROS_DEBUG("Incrementing governor.");
+  ROS_INFO("Incrementing governor.");
   
   float v = m_pRobot->QueryGovernorVal();
   v += req.delta;
 
   rsp.value = m_pRobot->SetGovernorVal(v);
+  ROS_INFO("Governor set to %f", rsp.value);
   return true;
 }
 

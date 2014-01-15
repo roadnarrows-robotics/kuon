@@ -127,6 +127,8 @@ public:
     }
   }
 
+  void setGovernor(float v){m_pRobot->SetGovernorVal(v);}
+
   
   // --- Publications
   int UpdateStatus(kuon_control::KuonStatus &status)
