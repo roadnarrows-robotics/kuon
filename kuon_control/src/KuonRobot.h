@@ -75,6 +75,7 @@ class KuonRobot
 public:
   KuonRobot()
   {
+    m_fGovernorVal = 0.1;
   }
 
   ~KuonRobot()
