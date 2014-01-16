@@ -102,7 +102,7 @@ public:
   {
     KuonStatus_T s;
     s.e_stopped = m_bIsEstopped;
-    s.mode = true;
+    s.mode = false;
     s.drives_powered = true;
     s.in_motion = m_bInMotion;
     s.in_error = false;
