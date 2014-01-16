@@ -78,6 +78,7 @@ public:
   KuonControlNode()
   {
     m_pRobot = new KuonRobot();
+    m_nWatchDog = -1;
   }
 
   ~KuonControlNode() {disconnect();}
@@ -120,9 +121,9 @@ public:
 
   void checkWatchDog()
   {
-    if(m_nWatchDog-- <= 0)
+    if(m_nWatchDog-- == 0)
     {
-      m_nWatchDog = 0;
+      m_nWatchDog = -1;
       m_pRobot->setSpeeds(0,0);
     }
   }

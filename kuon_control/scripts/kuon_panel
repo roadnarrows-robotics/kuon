@@ -50,7 +50,7 @@ from industrial_msgs.msg import TriState
 
 from kuon_control.msg import BrakeCmd           # publish
 from kuon_control.msg import KuonState          # subscribe (TBD)
-from kuon_control.msg import KuonStatus         # subscribe (TBD)
+from kuon_control.msg import KuonStatus         # subscribe
 from kuon_control.msg import SlewCmd            # publish
 from kuon_control.msg import SpeedCmd           # publish
 from kuon_control.msg import Version            # service
@@ -887,8 +887,8 @@ class aboutDlg(Toplevel):
   def initData(self, kw):
     self.m_icons          = {}    # must keep loaded icons referenced
     self.m_prodName       = "Kuon"
-    self.m_hwVer          = "1.0.0"
-    self.m_prodId         = 0x00
+    self.m_hwVer          = "0.9.1"
+    self.m_prodId         = "RN.Kuon"
     self.m_prodBrief      = "Kuon Outdoor Mobile Robot"
     self.m_rnUrl          = "http://www.roadnarrows.com/Kuon"
     self.m_rnEmail        = "support@roadnarrows.com"
@@ -957,7 +957,7 @@ class aboutDlg(Toplevel):
     w.grid(row=row, column=1, padx=2, sticky=W)
 
     w = Label(frame)
-    w['text']   = "%08x" % (self.m_prodId)
+    w['text']   = self.m_prodId
     w['anchor'] = W
     w['width']  = rwidth
     w.grid(row=row, column=2, padx=2, sticky=W)
@@ -1112,6 +1112,9 @@ class window(Frame):
     # intialize window data
     kw = self.initData(kw)
 
+    # publish speed command
+    self.m_pub_speed_cmd = rospy.Publisher("kuon_control/speed_cmd", SpeedCmd)
+
     Frame.__init__(self, master=master, cnf=cnf, **kw)
     self.master.title("Kuon Control Panel")
     self.grid(row=0, column=0, padx=5, pady=5)
@@ -1186,7 +1189,7 @@ class window(Frame):
     # top heading
     w = Label(self)
     w['font']   = ('Helvetica', 16)
-    w['text']   = 'Kuon'
+    w['text']   = 'Kuon Control Panel'
     w['anchor'] = CENTER
     w.grid(row=0, column=1, sticky=E+W)
 
@@ -1211,50 +1214,44 @@ class window(Frame):
     wframe['relief'] = 'ridge'
     wframe.grid(row=1, column=0, padx=1, pady=3, sticky=N+W+E)
 
-    # park
-    w = self.createButton(wframe, "Park", "icons/icon_kuon_park.png",
-                            self.gotoParkedPos)
+    # move foward
+    w = self.createButton(wframe, "Forward", "icons/icon_kuon_forward.png",
+                            self.kuonMoveForward)
     w.grid(row=1, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('park')
-    self.m_keysNoMoves.append('park')
+    self.m_keysNoMoves.append('forward')
 
-    # balance
-    w = self.createButton(wframe, "Balance", "icons/icon_kuon_balance.png",
-                            self.gotoBalancedPos)
+    # move backward
+    w = self.createButton(wframe, "Back", "icons/icon_kuon_back.png",
+                            self.kuonMoveBackward)
     w.grid(row=2, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('balance')
-    self.m_keysNoMoves.append('balance')
+    self.m_keysNoMoves.append('back')
 
-    # zero point
-    w = self.createButton(wframe, "Zero\nPoint", "icons/icon_kuon_zeropt.png",
-                            self.gotoZeroPt)
+    # spin left
+    w = self.createButton(wframe, "Spin\nLeft", "icons/icon_kuon_spin_left.png",
+                            self.kuonSpinLeft)
     w.grid(row=3, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('zero_point')
-    self.m_keysNoMoves.append('zero_point')
+    self.m_keysNoMoves.append('spin_left')
 
-    # open gripper
-    w = self.createButton(wframe, "Open\nGripper",
-                                  "icons/icon_gripper_open.png",
-                                  self.openGripper)
+    # spin right
+    w = self.createButton(wframe, "Spin\nRight",
+                            "icons/icon_kuon_spin_right.png",
+                            self.kuonSpinRight)
     w.grid(row=4, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('open_gripper')
-    self.m_keysNoMoves.append('open_gripper')
+    self.m_keysNoMoves.append('spin_right')
 
-    # close gripper
-    w = self.createButton(wframe, "Close\nGripper",
-                                  "icons/icon_gripper_close.png",
-                                  self.closeGripper)
+    # stop 
+    w = self.createButton(wframe, "Stop",
+                                  "icons/icon_kuon_brake.png",
+                                  self.kuonStop)
     w.grid(row=5, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('close_gripper')
-    self.m_keysNoMoves.append('close_gripper')
+    self.m_keysNoMoves.append('stop')
 
-    # specify move
-    w = self.createButton(wframe, "Specify\nMove",
-                                  "icons/icon_kuon_in_motion.png",
-                                  self.specifyMove)
-    w.grid(row=6, column=0, sticky=N+E+W)
-    self.m_keysFewMoves.append('specify_move')
-    self.m_keysNoMoves.append('specify_move')
+    ## specify move
+    #w = self.createButton(wframe, "Specify\nMove",
+    #                              "icons/icon_kuon_in_motion.png",
+    #                              self.specifyMove)
+    #w.grid(row=6, column=0, sticky=N+E+W)
+    #self.m_keysNoMoves.append('specify_move')
 
   #
   ## \brief Create robot status and joint state center panel.
@@ -1282,17 +1279,17 @@ class window(Frame):
     # heading
     w = Label(wframe)
     w['font'] =('Helvetica', 12)
-    w['text'] = 'Robot Status'
+    w['text'] = 'Status'
     w['justify'] = CENTER
     w.grid(row=0, column=0, columnspan=9, sticky=E+W)
 
-    width = 10
+    width = 14
     row   = 1
     col   = 0
 
     # robot mode status
     var = StringVar()
-    var.set("Auto mode")
+    var.set("Manual mode")
     w = Entry(wframe)
     w['borderwidth'] = 2
     w['relief']   = 'flat'
@@ -1300,25 +1297,9 @@ class window(Frame):
     w['textvar']  = var
     w['fg']       = fgColors['normal']
     w['state']    = 'readonly'
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
-    d = {'val': RobotMode.AUTO, 'var': var, 'w': w}
+    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+    d = {'val': False, 'var': var, 'w': w}
     self.m_robotStatus['mode'] = d
-
-    col += 1
-
-    # robot calibration status
-    var = StringVar()
-    var.set("Not calibrated")
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['relief']   = 'flat'
-    w['width']    = width
-    w['textvar']  = var
-    w['fg']       = fgColors['normal']
-    w['state']    = 'readonly'
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
-    d = {'val': TriState.FALSE, 'var': var, 'w': w}
-    self.m_robotStatus['calibration'] = d
 
     col += 1
 
@@ -1332,8 +1313,8 @@ class window(Frame):
     w['textvar']  = var
     w['fg']       = fgColors['normal']
     w['state']    = 'readonly'
-    w.grid(row=row, column=col, padx=0, pady=0, sticky=W+E)
-    d = {'val': TriState.ON, 'var': var, 'w': w}
+    w.grid(row=row, column=col, padx=0, pady=0, sticky=W)
+    d = {'val': True, 'var': var, 'w': w}
     self.m_robotStatus['motors'] = d
 
     col += 1
@@ -1342,6 +1323,8 @@ class window(Frame):
     self.m_icons['led_green'] = loadIcon("icons/icon_led_green_16.png")
     self.m_icons['led_red']   = loadIcon("icons/icon_led_red_16.png")
 
+    width = 10
+
     # moving status
     w = Label(wframe)
     w['text']     = 'Moving'
@@ -1349,7 +1332,7 @@ class window(Frame):
     w['justify']  = RIGHT
     w['anchor']   = E
     w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E+W)
+    w.grid(row=row, column=col, sticky=E)
     d = {'val': None, 'var': None, 'w': w}
     self.m_robotStatus['moving_label'] = d
 
@@ -1359,8 +1342,8 @@ class window(Frame):
     w = Label(wframe)
     w['image'] = self.m_icons['led_dark']
     w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=W+E)
-    d = {'val': TriState.OFF, 'var': None, 'w': w}
+    w.grid(row=row, column=col, sticky=W)
+    d = {'val': False, 'var': None, 'w': w}
     self.m_robotStatus['moving_led'] = d
 
     col += 1
@@ -1372,7 +1355,7 @@ class window(Frame):
     w['justify']  = RIGHT
     w['anchor']   = E
     w['relief']   = 'flat'
-    w.grid(row=row, column=col, sticky=E+W)
+    w.grid(row=row, column=col, sticky=E)
     d = {'val': None, 'var': None, 'w': w}
     self.m_robotStatus['alarms_label'] = d
 
@@ -1382,8 +1365,8 @@ class window(Frame):
     w = Label(wframe)
     w['image'] = self.m_icons['led_dark']
     w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=W+E)
-    d = {'val': TriState.OFF, 'var': None, 'w': w}
+    w.grid(row=row, column=col, sticky=W)
+    d = {'val': False, 'var': None, 'w': w}
     self.m_robotStatus['alarms_led'] = d
 
     col += 1
@@ -1405,8 +1388,8 @@ class window(Frame):
     w = Label(wframe)
     w['image'] = self.m_icons['led_dark']
     w['justify'] = LEFT
-    w.grid(row=row, column=col, sticky=E)
-    d = {'val': TriState.OFF, 'var': None, 'w': w}
+    w.grid(row=row, column=col, sticky=W)
+    d = {'val': False, 'var': None, 'w': w}
     self.m_robotStatus['estop_led'] = d
 
   #
@@ -1415,13 +1398,14 @@ class window(Frame):
   ## \param totWidth  Total text width of joint state panel
   #
   def adjustWidthRobotStatusPanel(self, totWidth):
-    width = (totWidth - 12) / 9
-    self.m_robotStatus['mode']['w']['width'] = 2 * width
-    self.m_robotStatus['calibration']['w']['width'] = 2 * width
-    self.m_robotStatus['motors']['w']['width'] = 2 * width
-    self.m_robotStatus['moving_label']['w']['width'] = width
-    self.m_robotStatus['alarms_label']['w']['width'] = width
-    self.m_robotStatus['estop_label']['w']['width'] = width
+    pass
+    #width = (totWidth - 12) / 9
+    #self.m_robotStatus['mode']['w']['width'] = 2 * width
+    #self.m_robotStatus['calibration']['w']['width'] = 2 * width
+    #self.m_robotStatus['motors']['w']['width'] = 2 * width
+    #self.m_robotStatus['moving_label']['w']['width'] = width
+    #self.m_robotStatus['alarms_label']['w']['width'] = width
+    #self.m_robotStatus['estop_label']['w']['width'] = width
 
   #
   ## \brief Create joint state lower center panel headers.
@@ -1438,26 +1422,26 @@ class window(Frame):
     # heading
     w = Label(wframe)
     w['font'] =('Helvetica', 12)
-    w['text'] = 'Kuon State'
+    w['text'] = 'State'
     w['anchor'] = CENTER
     w.grid(row=0, column=0, columnspan=10, sticky=E+W)
 
-    width = 12
     padx  = 10
     pady  = 3
     row   = 1
 
-    # left column of labels
-    for text in ['Joint', 'Servo Id', 'State',
-        'Position(deg)', 'Odometer(ticks)', 'Encoder(ticks)',
-        'Velocity(%max)', 'Speed(raw)',
-        'Effort(raw)', 'Temperature(C)', 'Voltage(volts)',
-        'Alarms']:
-      break
-      #w = Label(wframe, width=width, padx=padx, pady=pady, anchor=E,
-      #          text=text+':')
-      #w.grid(row=row, column=0, sticky=W)
-      #row += 1
+    self.m_icons['kuon_top_down'] = loadIcon("KuonTopDown300.png")
+
+    w = Canvas(wframe, width=550, height=300)
+    w.grid(row=row, column=0, columnspan=10, sticky=E+W)
+
+    if self.m_icons['kuon_top_down'] is not None:
+      w.create_image(270, 150, image=self.m_icons['kuon_top_down'])
+
+    w.create_text(110,  50, text="N/A")
+    w.create_text(110,  250, text="N/A")
+    w.create_text(425, 50, text="N/A")
+    w.create_text(425, 250, text="N/A")
 
   #
   ## \brief Create joint state lower center panel state.
@@ -1482,18 +1466,6 @@ class window(Frame):
                                   fg='red')
     w.grid(row=0, column=0, sticky=N+E+W)
     self.m_icons['estop_reset'] = loadIcon("icons/icon_estop_reset.png")
-
-    # freeze
-    w = self.createButton(wframe, "Freeze",
-                                  "icons/icon_pause.png", self.freezeArm)
-    w.grid(row=1, column=0, sticky=N+E+W)
-    self.m_keysNoMoves.append('freeze')
-
-    # release
-    w = self.createButton(wframe, "Release",
-                                  "icons/icon_stop.png", self.releaseArm)
-    w.grid(row=2, column=0, sticky=N+E+W)
-    self.m_keysNoMoves.append('release')
 
     # clear alarms
     w = self.createButton(wframe, "Clear\nAlarms",
@@ -1580,122 +1552,81 @@ class window(Frame):
     self.quit()
 
   #
-  ## \brief Go to parked position callback.
+  ## \brief Move forward
   #
-  def gotoParkedPos(self):
-    try:
-      rospy.wait_for_service("kuon_control/goto_parked", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Goto parked position: ' + e.message + '.')
-      return
-    try:
-      goto_parked_pos = rospy.ServiceProxy('kuon_control/goto_parked', 
-                                        GotoParkedPos)
-      goto_parked_pos()
-    except rospy.ServiceException, e:
-      self.showError("Goto parked position request failed: %s." % (e.message))
-      return
-    self.showInfo("Parked.")
+  def kuonMoveForward(self):
+    self.showInfo("Moving forward.")
+    cmd = SpeedCmd()
+    cmd.left  = 50;
+    cmd.right = 50;
+    self.m_pub_speed_cmd.publish(cmd)
   
   #
-  ## \brief Go to balanced position callback.
+  ## \brief Move backward.
   #
-  def gotoBalancedPos(self):
-    try:
-      rospy.wait_for_service("kuon_control/goto_balanced", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Goto balanced position: ' + e.message + '.')
-      return
-    try:
-      goto_balanced_pos = rospy.ServiceProxy(
-                                        'kuon_control/goto_balanced', 
-                                        GotoBalancedPos)
-      goto_balanced_pos()
-    except rospy.ServiceException, e:
-      self.showError("Goto balanced position request failed: %s." % (e.message))
-      return
-    self.showInfo("Balanced.")
+  def kuonMoveBackward(self):
+    self.showInfo("Moving back.")
+    cmd = SpeedCmd()
+    cmd.left  = -50;
+    cmd.right = -50;
+    self.m_pub_speed_cmd.publish(cmd)
   
   #
-  ## \brief Go to zero point position callback.
+  ## \brief Spin left.
   #
-  def gotoZeroPt(self):
-    try:
-      rospy.wait_for_service("kuon_control/goto_zero", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Goto zero point: ' + e.message + '.')
-      return
-    try:
-      goto_zero_pt = rospy.ServiceProxy('kuon_control/goto_zero', 
-                                        GotoZeroPt)
-      goto_zero_pt()
-    except rospy.ServiceException, e:
-      self.showError("Goto zero point failed: %s." % (e.message))
-      return
-    self.showInfo("Zero point.")
+  def kuonSpinLeft(self):
+    self.showInfo("Spinning left.")
+    cmd = SpeedCmd()
+    cmd.left  = -50;
+    cmd.right = 50;
+    self.m_pub_speed_cmd.publish(cmd)
   
   #
-  ## \brief Open gripper callback.
+  ## \brief Spin right.
   #
-  def openGripper(self):
-    try:
-      rospy.wait_for_service("kuon_control/open_gripper", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Open gripper: ' + e.message + '.')
-      return
-    try:
-      open_gripper = rospy.ServiceProxy('kuon_control/open_gripper', 
-                                        OpenGripper)
-      open_gripper()
-    except rospy.ServiceException, e:
-      self.showError("Open grippper request failed: %s." % (e.message))
-      return
-    self.showInfo("Gripper opened.")
+  def kuonSpinRight(self):
+    self.showInfo("Spinning right.")
+    cmd = SpeedCmd()
+    cmd.left  = 50;
+    cmd.right = -50;
+    self.m_pub_speed_cmd.publish(cmd)
   
-
   #
-  ## \brief Close gripper callback.
+  ## \brief Brake to stop.
   #
-  def closeGripper(self):
-    try:
-      rospy.wait_for_service("kuon_control/close_gripper", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Close gripper: ' + e.message + '.')
-      return
-    try:
-      close_gripper = rospy.ServiceProxy('kuon_control/close_gripper',
-                                          CloseGripper)
-      close_gripper()
-    except rospy.ServiceException, e:
-      self.showError("Close grippper request failed: %s." % (e.message))
-      return
-    self.showInfo("Gripper closed.")
-
+  def kuonStop(self):
+    cmd = SpeedCmd()
+    cmd.left  = 0;
+    cmd.right = 0;
+    self.m_pub_speed_cmd.publish(cmd)
+    self.showInfo("Stopped.")
+  
   #
   ## \brief Specify move callback.
   #
   def specifyMove(self):
-    jointTrajectory  = trajectory_msgs.msg.JointTrajectory()
-    jointTrajPoint   = trajectory_msgs.msg.JointTrajectoryPoint()  
-    jointTrajectory.points.append(jointTrajPoint)
-    for name,val in self.m_robotJoint.iteritems(): 
-      jointTrajectory.joint_names.append(name)
-      pos = self.m_robotJoint[name]['position']['var'].get()
-      jointTrajPoint.positions.append(degToRad(pos))
-      jointTrajPoint.velocities.append(10.0)
-      jointTrajPoint.accelerations.append(0.0)
-    dlg = moveDlg(master=self, image='KuonInMotion.png',
-                                trajectory=jointTrajectory)
-    if not dlg.m_result:
-      return
-    else:
-      self.cbMoveRobot(jointTrajectory)
+    pass
+    #jointTrajectory  = trajectory_msgs.msg.JointTrajectory()
+    #jointTrajPoint   = trajectory_msgs.msg.JointTrajectoryPoint()  
+    #jointTrajectory.points.append(jointTrajPoint)
+    #for name,val in self.m_robotJoint.iteritems(): 
+    #  jointTrajectory.joint_names.append(name)
+    #  pos = self.m_robotJoint[name]['position']['var'].get()
+    #  jointTrajPoint.positions.append(degToRad(pos))
+    #  jointTrajPoint.velocities.append(10.0)
+    #  jointTrajPoint.accelerations.append(0.0)
+    #dlg = moveDlg(master=self, image='KuonInMotion.png',
+    #                            trajectory=jointTrajectory)
+    #if not dlg.m_result:
+    #  return
+    #else:
+    #  self.cbMoveRobot(jointTrajectory)
   
   #
   ## \brief (Reset) emergency stop callback.
   #
   def estop(self):
-    if self.m_robotStatus['estop_led']['val'] == TriState.FALSE:
+    if not self.m_robotStatus['estop_led']['val']:
       self.showResetEStop()
       try:
         rospy.wait_for_service("kuon_control/estop", timeout=1)
@@ -1704,8 +1635,7 @@ class window(Frame):
         self.showEStop()
         return
       try:
-        estop = rospy.ServiceProxy('kuon_control/estop',
-                                          EStop)
+        estop = rospy.ServiceProxy('kuon_control/estop', EStop)
         estop()
       except rospy.ServiceException, e:
         self.showError("Emergency stop request failed: %s." % (e.message))
@@ -1747,48 +1677,6 @@ class window(Frame):
     self.m_wBttn['estop']['text']   = "Reset\nESTOP"
     self.m_wBttn['estop']['fg']     = fgColors['normal']
     self.update_idletasks()
-
-  #
-  ## \brief Freeze arm callback.
-  #
-  def freezeArm(self):
-    try:
-      rospy.wait_for_service("kuon_control/freeze", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Freeze arm: ' + e.message + '.')
-      return
-    try:
-      freeze = rospy.ServiceProxy('kuon_control/freeze', Freeze)
-      freeze()
-    except rospy.ServiceException, e:
-      self.showError("Freeze arm request failed: %s." % (e.message))
-      return
-    self.showInfo("Kuon has been frozen at current position.")
-
-  #
-  ## \brief Release arm callback.
-  #
-  def releaseArm(self):
-    if self.m_config['warn_on_release']:
-      dlg = warnDlg(master=self,
-                    image="KuonFalling.png",
-                    msg="""\
-The Kuon motros will become unpowered.
-The arm may fall if not in a stable position.""")
-      if not dlg.m_result:
-        return
-    try:
-      rospy.wait_for_service("kuon_control/release", timeout=1)
-    except rospy.ROSException, e:
-      self.showError('Release arm: ' + e.message + '.')
-      return
-    try:
-      release = rospy.ServiceProxy('kuon_control/release', Release)
-      release()
-    except rospy.ServiceException, e:
-      self.showError("Release arm request failed: %s." % (e.message))
-      return
-    self.showInfo("Kuon has been release, all motors are unpowered.")
 
   #
   ## \brief Clear alarms callback.
@@ -1843,10 +1731,6 @@ The arm may fall if not in a stable position.""")
   def updateRobotStatus(self, status):
     self.showRobotStatus(status)
 
-    # first update of joint state required first
-    if self.m_bHasJointPanel:
-      self.showServoHealth(status.servo_health)
-
   #
   ## \brief Update joint state.
   ##
@@ -1868,16 +1752,15 @@ The arm may fall if not in a stable position.""")
   ## \param status  Robot status extended message.
   #
   def showRobotStatus(self, status):
-    if status.mode.val == RobotMode.MANUAL or \
-      status.e_stopped.val == TriState.TRUE:
+    if status.e_stopped:
       bNoMoves = True
     else:
       bNoMoves = False
 
     key = 'mode'
-    if self.m_robotStatus[key]['val'] != status.mode.val:
-      text, fg = self.toRobotMode(status.mode.val)
-      self.m_robotStatus[key]['val'] = status.mode.val
+    if self.m_robotStatus[key]['val'] != status.mode:
+      text, fg = self.toRobotMode(status.mode)
+      self.m_robotStatus[key]['val'] = status.mode
       self.showEntry(self.m_robotStatus[key]['w'],
                      self.m_robotStatus[key]['var'], text, fg)
       if bNoMoves:
@@ -1887,32 +1770,32 @@ The arm may fall if not in a stable position.""")
       self.updateButtonState(self.m_keysNoMoves, state)
 
     key = 'motors'
-    if self.m_robotStatus[key]['val'] != status.drives_powered.val:
-      text, fg = self.toMotorsPowered(status.drives_powered.val)
-      self.m_robotStatus[key]['val'] = status.drives_powered.val
+    if self.m_robotStatus[key]['val'] != status.drives_powered:
+      text, fg = self.toMotorsPowered(status.drives_powered)
+      self.m_robotStatus[key]['val'] = status.drives_powered
       self.showEntry(self.m_robotStatus[key]['w'],
                      self.m_robotStatus[key]['var'], text, fg)
 
     key = 'moving_led'
-    if self.m_robotStatus[key]['val'] != status.in_motion.val:
-      self.m_robotStatus[key]['val'] = status.in_motion.val
-      if status.in_motion.val == TriState.ON:
+    if self.m_robotStatus[key]['val'] != status.in_motion:
+      self.m_robotStatus[key]['val'] = status.in_motion
+      if status.in_motion:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_green'] 
       else:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
 
     key = 'alarms_led'
-    if self.m_robotStatus[key]['val'] != status.in_error.val:
-      self.m_robotStatus[key]['val'] = status.in_error.val
-      if status.in_error.val == TriState.TRUE:
+    if self.m_robotStatus[key]['val'] != status.in_error:
+      self.m_robotStatus[key]['val'] = status.in_error
+      if status.in_error:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
       else:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
 
     key = 'estop_led'
-    if self.m_robotStatus[key]['val'] != status.e_stopped.val:
-      self.m_robotStatus[key]['val'] = status.e_stopped.val
-      if status.e_stopped.val == TriState.TRUE:
+    if self.m_robotStatus[key]['val'] != status.e_stopped:
+      self.m_robotStatus[key]['val'] = status.e_stopped
+      if status.e_stopped:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_red'] 
       else:
         self.m_robotStatus[key]['w']['image'] = self.m_icons['led_dark'] 
@@ -2006,20 +1889,16 @@ The arm may fall if not in a stable position.""")
     w['state'] = 'readonly'
 
   def toRobotMode(self, mode):
-    if mode == RobotMode.MANUAL:
-      return ("Manual mode", fgColors['normal'])
-    elif mode == RobotMode.AUTO:
+    if mode:
       return ("Auto mode", fgColors['normal'])
     else:
-      return (repr(mode), fgColors['error'])
+      return ("Manual mode", fgColors['normal'])
 
-  def toMotorsPowered(self, tristate):
-    if tristate == TriState.FALSE:
-      return ("Motors unpowered", fgColors['normal'])
-    elif tristate == TriState.TRUE:
+  def toMotorsPowered(self, drives_powered):
+    if drives_powered:
       return ("Motors powered", fgColors['normal'])
     else:
-      return (repr(tristate), fgColors['error'])
+      return ("Motors unpowered", fgColors['normal'])
 
   def toWheelState(self, opstate):
       if opstate == KuonOpState.UNCALIBRATED:
@@ -2194,10 +2073,6 @@ Options and arguments:
     rospy.Subscriber("kuon_control/kuon_state", 
                      KuonState, 
                      self.updateWheelStates) 
-
-    # publish trajectory to kuon controller
-    self.m_joint_cmd_pub = rospy.Publisher("kuon_control/joint_command",
-                                        trajectory_msgs.msg.JointTrajectory)
 
     self.m_win.showInfo("Kuon interface initialized.")
 
