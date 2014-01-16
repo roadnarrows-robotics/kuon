@@ -113,8 +113,8 @@ int KuonRobot::setSpeeds(int left, int right)
     m_bInMotion = true;
   }
 
-  const int right_mot = 0;
-  const int left_mot  = 1;
+  const int right_mot = 1;
+  const int left_mot  = 0;
 
   fprintf(stderr, "Sending speed command: \n");
   fprintf(stderr, "\t fds: %d %d\n", m_fdFrontMots, m_fdRearMots);
@@ -135,8 +135,8 @@ int KuonRobot::setSlew(int s)
     fprintf(stderr,"Kuon estopped - aborting command\n");
     return 0;
   }
-  const int right_mot = 0;
-  const int left_mot  = 1;
+  const int left_mot  = 0;
+  const int right_mot = 1;
 
   if (s > 40) 
   {
@@ -161,8 +161,8 @@ int KuonRobot::setBrake(int b)
     return 0;
   }
 
-  const int right_mot = 0;
-  const int left_mot  = 1;
+  const int left_mot  = 0;
+  const int right_mot = 1;
 
   if (b > 31) 
   {
