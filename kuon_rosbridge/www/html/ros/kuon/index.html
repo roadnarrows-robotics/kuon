@@ -10,13 +10,13 @@
 <!-- roadnarrows platform imports -->
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 <script type="text/javascript" src="../js/rosbridge_global.js"></script>
-<script type="text/javascript" src="../js/draw_xbox360.js"></script>
-<script type="text/javascript" src="../js/rosbridge_xbox360.js"></script>
+<script type="text/javascript" src="../js/draw_kuon.js"></script>
+<script type="text/javascript" src="../js/rosbridge_kuon.js"></script>
 <script type="text/javascript" src="../js/app.js"></script>
 <script>
   window.onload = function(){
-    xbox.draw();
-    xbox.sub_state(function(msg){
+    kuon.draw();
+    kuon.sub_state(function(msg){
       console.info(msg);
     });
   }
@@ -34,7 +34,7 @@
     fill:none;
     }
     
-    #xbox_vis
+    #kuon_vis
     {
       display: block;
       overflow:hidden;
@@ -45,5 +45,5 @@
 </head>
 
 <body>
-  <div id="xbox_vis"></div>
+<h1>Let the ruckus begin!</h1>
 </body>
