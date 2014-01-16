@@ -316,6 +316,12 @@ Options and arguments:
     # publish speed command
     self.m_pub_speed_cmd = rospy.Publisher("kuon_control/speed_cmd", SpeedCmd)
 
+    # publish brake command
+    self.m_pub_brake_cmd = rospy.Publisher("kuon_control/brake_cmd", BrakeCmd)
+
+    # publish slew command
+    self.m_pub_slew_cmd = rospy.Publisher("kuon_control/slew_cmd", SlewCmd)
+
   #
   ## \brief Show information message.
   ##
@@ -357,6 +363,7 @@ Options and arguments:
     return 0
 
   def handler(self):
+    self.stop()
     self.setLED(self.m_xboxLEDOff)
     self.showInfo("--- End teleoperation.")
 
@@ -541,12 +548,35 @@ Options and arguments:
       self.setTeleopLED()
   
   def govUp(self, bttn, xbox):
-    pass
+    if not self.buttonOffToOn(bttn, xbox):
+      return
+    self.govSet(0.1)
 
   def govDown(self, bttn, xbox):
-    pass
+    if not self.buttonOffToOn(bttn, xbox):
+      return
+    self.govSet(-0.1)
+
+  def govSet(self, delta):
+    try:
+      rospy.wait_for_service("kuon_control/increment_governor", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('Inc/dec governor: ' + e.message + '.')
+      return
+    try:
+      incgov = rospy.ServiceProxy('kuon_control/increment_governor',
+          IncrementGovernor)
+      rc = incgov(delta=delta)
+    except rospy.ServiceException, e:
+      self.showError("Inc/dec governor request failed: %s." % (e.message))
+      return
+    value = rc.value * 100.0
+    self.showInfo("Kuon governor at %3.1f%% of maximum power." % (value))
 
   def move(self, bttn, xbox):
+    if not self.canMove():
+      return
+
     joy_x = self.getButton('left_joy_x', xbox)
     joy_y = self.getButton('left_joy_y', xbox)
 
@@ -567,19 +597,43 @@ Options and arguments:
       speedRight = 249
     elif speedRight < -249:
       speedRight = -249
-    print "(%d, %d) -> (%d, %d)" % (joy_x, joy_y, speedLeft, speedRight)
+    #print "(%d, %d) -> (%d, %d)" % (joy_x, joy_y, speedLeft, speedRight)
 
     cmd = SpeedCmd()
     cmd.left  = speedLeft
     cmd.right = speedRight
-    print "(%d, %d)" % (cmd.left, cmd.right)
+    #print "(%d, %d)" % (cmd.left, cmd.right)
     self.m_pub_speed_cmd.publish(cmd)
 
   def brake(self, bttn, xbox):
-    pass
+    if not self.canMove():
+      return
+    trigger = self.getButton(bttn, xbox)
+    brake = 31 - 31.0 * trigger/255.0
+    cmd = BrakeCmd()
+    cmd.val = int(brake)
+    self.m_pub_brake_cmd.publish(cmd)
 
   def slew(self, bttn, xbox):
-    pass
+    if not self.canMove():
+      return
+    trigger = self.getButton(bttn, xbox)
+    slew = 80.0 * trigger/255.0
+    cmd = SlewCmd()
+    cmd.val = int(slew)
+    self.m_pub_slew_cmd.publish(cmd)
+
+  #
+  ## \brief Brake to stop.
+  #
+  def stop(self):
+    if not self.canMove():
+      return
+    cmd = SpeedCmd()
+    cmd.left  = 0;
+    cmd.right = 0;
+    self.m_pub_speed_cmd.publish(cmd)
+    self.showInfo("Stopped.")
 
 
 # ------------------------------------------------------------------------------
