@@ -123,9 +123,9 @@ int KuonRobot::setSpeeds(int left, int right)
   fprintf(stderr, "\t governor: %f\n", m_fGovernorVal);
 
   RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdFrontMots, left_mot);
-  RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdFrontMots, right_mot);
+  RS160DUpdateMotorSpeeds(int(-right*m_fGovernorVal), m_fdFrontMots, right_mot);
   RS160DUpdateMotorSpeeds(int(left*m_fGovernorVal),  m_fdRearMots,  left_mot);
-  RS160DUpdateMotorSpeeds(int(right*m_fGovernorVal), m_fdRearMots,  right_mot);
+  RS160DUpdateMotorSpeeds(int(-right*m_fGovernorVal), m_fdRearMots,  right_mot);
 }
 
 int KuonRobot::setSlew(int s)
