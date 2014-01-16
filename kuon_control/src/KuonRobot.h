@@ -82,6 +82,8 @@ public:
   KuonRobot()
   {
     m_fGovernorVal = 0.1;
+    m_bIsEstopped = false;
+    m_bInMotion = false;
   }
 
   ~KuonRobot()

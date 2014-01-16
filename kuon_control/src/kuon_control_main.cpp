@@ -122,7 +122,7 @@ int main(int argc, char **argv)
     kuon_status.publish(s);
 
     ros::spinOnce(); 
-    kuon.checkWatchDog();
+    //kuon.checkWatchDog();
     loop_rate.sleep();
     ++seq;
   }
