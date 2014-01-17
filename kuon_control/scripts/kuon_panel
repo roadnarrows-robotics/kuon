@@ -56,7 +56,6 @@ from kuon_control.srv import EStop              # service
 from kuon_control.srv import ResetEStop         # service
 from kuon_control.srv import QueryVersion       # service (TBD)
 
-import actionlib
 import kuon_control.msg
 
 
