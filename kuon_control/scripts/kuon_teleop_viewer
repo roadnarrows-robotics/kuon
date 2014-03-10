@@ -4,20 +4,20 @@
 #
 # Package:  kuon
 #
-# File: kuon_teleop
+# File: kuon_teleop_viewer
 #
 ## \file 
 ##
 ## $LastChangedDate: 2012-12-06 16:33:18 -0700 (Thu, 06 Dec 2012) $
 ## $Rev: 330 $
 ##
-## \brief Kuon tele-oporated node.
+## \brief Kuon teleoporation viewer node. (under development).
 ##
 ## \author Daniel Packard (daniel@roadnarrows.com)
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2013.  RoadNarrows LLC.\n
+##   (C) 2013-2014.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##

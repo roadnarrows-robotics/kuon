@@ -51,6 +51,11 @@ add_executable(kuon_control
   src/KuonRobot.cpp
 )
 
+add_executable(kuon_teleop 
+  src/kuon_teleop/kuon_teleop.cpp 
+  src/kuon_teleop/kuon_teleop_main.cpp 
+)
+
 include_directories(
   include 
   ${rnr_INCLUDE_DIRS}
@@ -63,12 +68,18 @@ target_link_libraries(kuon_control
   ${catkin_LIBRARIES}
 )
 
+target_link_libraries(kuon_teleop 
+  ${rnr_LIBRARIES}
+  ${catkin_LIBRARIES}
+)
+
 add_dependencies(kuon_control kuon_control_gencpp)
+add_dependencies(kuon_teleop kuon_control_gencpp)
 
 install(
   PROGRAMS 
   scripts/kuon_panel
-  scripts/kuon_teleop
+  scripts/kuon_teleop_viewer
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
