@@ -15,7 +15,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 set(rnr_DIR /prj/lib/rnr)
 find_package(rnr)
 
-#catkin_python_setup()
+catkin_python_setup()
 
 add_message_files(
   DIRECTORY msg
