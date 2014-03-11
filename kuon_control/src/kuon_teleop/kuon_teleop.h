@@ -71,6 +71,12 @@
 #include "ros/ros.h"
 
 //
+// RoadNarrows
+//
+#include "rnr/rnrconfig.h"
+#include "rnr/hid/HIDXbox360.h"
+
+//
 // ROS generated Kuon messages.
 //
 #include "kuon_control/BrakeCmd.h"      // publish
@@ -111,8 +117,11 @@ namespace kuon
   class KuonTeleop
   {
   public:
-    /*! map of ROS services type */
+    /*! map of ROS server services type */
     typedef std::map<std::string, ros::ServiceServer> MapServices;
+
+    /*! map of ROS client services type */
+    typedef std::map<std::string, ros::ServiceClient> MapClientServices;
 
     /*! map of ROS publishers type */
     typedef std::map<std::string, ros::Publisher> MapPublishers;
@@ -126,16 +135,46 @@ namespace kuon
     enum TeleopState
     {
       TeleopStateUninit,    ///< not initialized
-      TeleopStatePause,     ///< paused
+      TeleopStatePaused,    ///< paused
       TeleopStateReady,     ///< ready and running
+    };
+
+    /*!
+     * \brief Xbox360 button map ids.
+     */
+    enum ButtonId
+    {
+      ButtonIdEStop   = rnr::Xbox360FeatIdBButton,      ///< emergency stop
+      ButtonIdGovUp   = rnr::Xbox360FeatIdPadUp,        ///< governor speed up
+      ButtonIdGovDown = rnr::Xbox360FeatIdPadDown,      ///< governor speed down
+      ButtonIdPause   = rnr::Xbox360FeatIdBack,         ///< pause teleop
+      ButtonIdStart   = rnr::Xbox360FeatIdStart,        ///< start teleop
+      ButtonIdMoveX   = rnr::Xbox360FeatIdLeftJoyX,     ///< move fwd/bwd
+      ButtonIdMoveY   = rnr::Xbox360FeatIdLeftJoyY,     ///< turn left/right
+      ButtonIdBrake   = rnr::Xbox360FeatIdLeftTrigger,  ///< ease brake
+      ButtonIdSlew    = rnr::Xbox360FeatIdRightTrigger  ///< slew
+    };
+
+    /*! teleop button state type */
+    typedef std::map<int, int> ButtonState;
+
+    /*!
+     * \brief Xbox360 LED patterns.
+     */
+    enum LEDPat
+    {
+      LEDPatUninit = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox pattern
+      LEDPatPaused = XBOX360_LED_PAT_ALL_SPIN_2,  ///< temp, auto-trans to blink
+      LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< spin
     };
 
     /*!
      * \brief Default initialization constructor.
      *
      * \param nh  Bound node handle.
+     * \param hz  Application nominal loop rate in Hertz.
      */
-    KuonTeleop(ros::NodeHandle &nh);
+    KuonTeleop(ros::NodeHandle &nh, double hz);
 
     /*!
      * \brief Destructor.
@@ -143,9 +182,14 @@ namespace kuon
     virtual ~KuonTeleop();
 
     /*!
-     * \brief Advertise all services.
+     * \brief Advertise all server services.
      */
     virtual void advertiseServices();
+
+    /*!
+     * \brief Initialize client services.
+     */
+    virtual void clientServices();
 
     /*!
      * \brief Advertise all publishers.
@@ -179,6 +223,16 @@ namespace kuon
     virtual void commCheck();
 
     /*!
+     * \brief Put robot into safe mode.
+     */
+    void putRobotInSafeMode();
+
+    bool canMove()
+    {
+      return (m_eState == TeleopStateReady) && !m_msgRobotStatus.e_stopped;
+    }
+
+    /*!
      * \brief Get bound node handle.
      *
      * \return Node handle.
@@ -188,29 +242,65 @@ namespace kuon
       return m_nh;
     }
 
+    /*!
+     * \brief Convert seconds to loop counts.
+     *
+     * \param seconds Seconds.
+     *
+     * \return Count.
+     */
+    int countsPerSecond(double seconds)
+    {
+      return (int)(seconds * m_hz);
+    }
+
   protected:
     ros::NodeHandle  &m_nh;       ///< the node handler bound to this instance
+    double            m_hz;       ///< application nominal loop rate
 
     // ROS services, publishers, subscriptions.
-    MapServices       m_services;       ///< kuon teleop services
+    MapServices       m_services;       ///< kuon teleop as server services
+    MapClientServices m_clientServices; ///< kuon teleop as client services
     MapPublishers     m_publishers;     ///< kuon teleop publishers
     MapSubscriptions  m_subscriptions;  ///< kuon teleop subscriptions
 
     // state
     TeleopState       m_eState;         ///< teleoperation state
-    bool              m_bHasXboxComm;   ///< good communications with Xbox
+    bool              m_bHasXboxComm;   ///< Xbox communications is [not] good
     int               m_nWdXboxCounter; ///< Xbox watchdog counter
-    bool              m_bHasKuonComm;   ///< good communications with Kuon
+    int               m_nWdXboxTimeout; ///< Xbox watchdog timeout
+    bool              m_bHasKuonComm;   ///< Kuon communications is [not] good
     int               m_nWdKuonCounter; ///< Kuon watchdog counter
+    int               m_nWdKuonTimeout; ///< Kuon watchdog timeout
     bool              m_bHasFullComm;   ///< good full communications
-    hid::Controller360State m_msgXboxState; ///< saved last Xbox button state
+    ButtonState       m_buttonState;    ///< saved button state
+
+    // messages
+    kuon_control::KuonStatus m_msgRobotStatus; ///< saved last Kuon status 
 
 
     //..........................................................................
-    // Service callbacks
+    // Server Service callbacks
     //..........................................................................
 
     // none
+
+
+    //..........................................................................
+    // Client Servicec
+    //..........................................................................
+
+    void setLED(int pattern);
+
+    void setRumble(int motorLeft, int motorRight);
+
+    // TBD void setRobotMode(int mode);
+
+    void estop();
+
+    void resetEStop();
+
+    void setGovernor(float delta);
 
 
     //..........................................................................
@@ -268,21 +358,32 @@ namespace kuon
     // Sanity
     //..........................................................................
 
-    /*!
-     * \brief Put robot into safe mode.
-     */
-    void putRobotInSafeMode();
-
-
     //..........................................................................
-    // Xbox Button Actions
+    // Xbox Actions
     //..........................................................................
 
-    void execAllButtonActions(const hid::Controller360State &msg);
+    void msgToState(const hid::Controller360State &msg,
+                    ButtonState                   &buttonState);
 
-    bool buttonOffToOn(int id);
+    bool buttonOffToOn(int id, ButtonState &buttonState);
 
-    void buttonStart();
+    void execAllButtonActions(ButtonState &buttonState);
+
+    void buttonStart(ButtonState &buttonState);
+
+    void buttonPause(ButtonState &buttonState);
+
+    void buttonEStop(ButtonState &buttonState);
+
+    void buttonGovernorUp(ButtonState &buttonState);
+
+    void buttonGovernorDown(ButtonState &buttonState);
+
+    void buttonBrake(ButtonState &buttonState);
+
+    void buttonSlew(ButtonState &buttonState);
+
+    void buttonMove(ButtonState &buttonState);
   };
 
 } // namespace kuon

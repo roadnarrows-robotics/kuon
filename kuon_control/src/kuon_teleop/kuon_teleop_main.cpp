@@ -55,6 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+#include <signal.h>
 #include <string>
 
 //
@@ -89,10 +90,14 @@ using namespace kuon;
 #define APP_EC_INIT 2   ///< initialization fatal error
 #define APP_EC_EXEC 4   ///< execution fatal error
 
+#define NO_SIGNAL   0   ///< no signal receieved value
+
 //
 // Data
 //
-const char *NodeName = "kuon_teleop";  ///< this ROS node's name
+const char *NodeName  = "kuon_teleop";  ///< this ROS node's name
+static int  RcvSignal = NO_SIGNAL;      ///< received 'gracefull' signal
+
 
 
 //. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
@@ -150,6 +155,21 @@ static OptsInfo_T AppOptsInfo[] =
 };
 
 /*!
+ * \brief Signal handler to allow graceful shutdown of ROS node.
+ *
+ * \note This handler overrides the roscpp SIGINT handler.
+ *
+ * \param sig   Signal number.
+ */
+static void sigHandler(int sig)
+{
+  RcvSignal = sig;
+
+  // All the default sigint handler does is call shutdown()
+  ros::shutdown();
+}
+
+/*!
  *  \brief ROS Kuon teleoperation node main.
  *
  * \param argc    Command-line argument count.
@@ -160,6 +180,7 @@ static OptsInfo_T AppOptsInfo[] =
 int main(int argc, char *argv[])
 {
   string  strNodeName;  // ROS-given node name
+  double  hz = 30;
   int     rc;
 
   // 
@@ -194,21 +215,37 @@ int main(int argc, char *argv[])
     return APP_EC_OK;
   }
 
-  // RDK set signal handler
-  
+  //
+  // Signals
+  //
+
+  // Override the default ros sigint handler. This must be set after the first
+  // NodeHandle is created.
+  signal(SIGINT, sigHandler);
+
+  // try to end safely with this signal
+  signal(SIGTERM, sigHandler);
+
   ROS_INFO("%s: Node started.", strNodeName.c_str());
   
   //
   // Create a Kuon teleoperation node object.
   //
-  KuonTeleop  teleop(nh);
+  KuonTeleop  teleop(nh, hz);
 
   //
-  // Advertise services.
+  // Advertise server services.
   //
   teleop.advertiseServices();
 
-  ROS_INFO("%s: Services registered.", strNodeName.c_str());
+  ROS_INFO("%s: Server services registered.", strNodeName.c_str());
+
+  //
+  // Initializedd client services.
+  //
+  teleop.clientServices();
+
+  ROS_INFO("%s: Client services initialized.", strNodeName.c_str());
 
   //
   // Advertise publishers.
@@ -225,14 +262,14 @@ int main(int argc, char *argv[])
   ROS_INFO("%s: Subscribed topics registered.", strNodeName.c_str());
 
   // set loop rate in Hertz
-  ros::Rate loop_rate(30);
+  ros::Rate loop_rate(hz);
 
   ROS_INFO("%s: Ready.", strNodeName.c_str());
 
   //
   // Main loop.
   //
-  while( ros::ok() )
+  while( (RcvSignal == NO_SIGNAL) && ros::ok() )
   {
     // make any callbacks on pending ROS events
     ros::spinOnce(); 
@@ -245,6 +282,11 @@ int main(int argc, char *argv[])
 
     // sleep to keep at loop rate
     loop_rate.sleep();
+  }
+
+  if( ros::ok() )
+  {
+    teleop.putRobotInSafeMode();
   }
 
   return APP_EC_OK;
