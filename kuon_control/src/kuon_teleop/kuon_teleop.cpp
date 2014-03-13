@@ -135,10 +135,10 @@ KuonTeleop::KuonTeleop(ros::NodeHandle &nh, double hz) : m_nh(nh), m_hz(hz)
   m_eState          = TeleopStateUninit;
   m_bHasXboxComm    = false;
   m_nWdXboxCounter  = 0;
-  m_nWdXboxTimeout  = countsPerSecond(1.0);
+  m_nWdXboxTimeout  = countsPerSecond(3.0);
   m_bHasKuonComm    = false;
   m_nWdKuonCounter  = 0;
-  m_nWdKuonTimeout  = countsPerSecond(1.0);
+  m_nWdKuonTimeout  = countsPerSecond(5.0);
   m_bHasFullComm    = false;
 
   m_buttonState = map_list_of
@@ -206,7 +206,7 @@ void KuonTeleop::setLED(int pattern)
 
   if( m_clientServices["/xbox_360/set_led"].call(svc) )
   {
-    ROS_INFO("Xbox360 LED set to pattern to %d", pattern);
+    ROS_DEBUG("Xbox360 LED set to pattern to %d", pattern);
   }
   else
   {
@@ -223,7 +223,7 @@ void KuonTeleop::setRumble(int motorLeft, int motorRight)
 
   if( m_clientServices["/xbox_360/set_rumble"].call(svc) )
   {
-    ROS_INFO("Xbox360 rumble motors set to %d, %d", motorLeft, motorRight);
+    ROS_DEBUG("Xbox360 rumble motors set to %d, %d", motorLeft, motorRight);
   }
   else
   {
@@ -267,7 +267,7 @@ void KuonTeleop::setGovernor(float delta)
 
   if( m_clientServices["/kuon_control/increment_governor"].call(svc) )
   {
-    ROS_INFO("Kuon governor set at %%5.1f", svc.response.value);
+    ROS_DEBUG("Kuon governor set at %%5.1f", svc.response.value);
   }
   else
   {
@@ -309,6 +309,8 @@ void KuonTeleop::publishBrakeCmd(int brake)
 
   // publish
   m_publishers["/kuon_control/brake_cmd"].publish(msg);
+
+  ROS_DEBUG("Brake = %d", msg.val);
 }
 
 void KuonTeleop::publishSlewCmd(int slew)
@@ -319,6 +321,8 @@ void KuonTeleop::publishSlewCmd(int slew)
 
   // publish
   m_publishers["/kuon_control/slew_cmd"].publish(msg);
+
+  ROS_DEBUG("Slew = %d", msg.val);
 }
 
 void KuonTeleop::publishSpeedCmd(int speedLeft, int speedRight)
@@ -330,6 +334,8 @@ void KuonTeleop::publishSpeedCmd(int speedLeft, int speedRight)
 
   // publish
   m_publishers["/kuon_control/speed_cmd"].publish(msg);
+
+  ROS_DEBUG("Speed = %d, %d", msg.left, msg.right);
 }
 
 void KuonTeleop::publishRumbleCmd(int motorLeft, int motorRight)
@@ -374,6 +380,8 @@ void KuonTeleop::cbKuonStatus(const kuon_control::KuonStatus &msg)
 
   m_bHasKuonComm    = true;
   m_nWdKuonCounter  = 0;
+
+  m_msgRobotStatus = msg;
 }
 
 void KuonTeleop::cbXboxConnStatus(const hid::ConnStatus &msg)
@@ -382,6 +390,8 @@ void KuonTeleop::cbXboxConnStatus(const hid::ConnStatus &msg)
 
   m_bHasXboxComm    = msg.is_connected && msg.is_linked;
   m_nWdXboxCounter  = 0;
+
+  m_msgConnStatus = msg;
 }
 
 void KuonTeleop::cbXboxBttnState(const hid::Controller360State &msg)
@@ -405,6 +415,7 @@ void KuonTeleop::cbXboxBttnState(const hid::Controller360State &msg)
       case TeleopStateUninit:
       default:
         m_eState = TeleopStatePaused;
+        setLED(LEDPatOn);       // see comment block in buttonPause();
         setLED(LEDPatPaused);
         break;
     }
@@ -438,16 +449,20 @@ void KuonTeleop::commCheck()
 
   bool hasComm  = m_bHasXboxComm && m_bHasKuonComm;
 
+  // had communitcation, but no more
   if( m_bHasFullComm && !hasComm )
   {
-    putRobotInSafeMode();
+    ROS_INFO("Lost communication with Xbox360 and/or Kuon.");
+    putRobotInSafeMode(m_msgConnStatus.is_connected);
   }
 
   m_bHasFullComm = hasComm;
 }
 
-void KuonTeleop::putRobotInSafeMode()
+void KuonTeleop::putRobotInSafeMode(bool bHard)
 {
+  static float  fGovDft = 0.20;
+
   // stop robot
   publishSpeedCmd(0, 0);
 
@@ -457,9 +472,19 @@ void KuonTeleop::putRobotInSafeMode()
   // set robot mode
   // TBD
  
+  if( bHard )
+  {
+    float governor = m_msgRobotStatus.governor_value;
+    float delta;
+
+    delta = fGovDft - governor;   // increment/decrement
+
+    setGovernor(delta);
+  }
+  
   m_eState = TeleopStateUninit;
 
-  setLED(LEDPatUninit);
+  setLED(LEDPatOn);
 }
 
 
@@ -481,18 +506,33 @@ void KuonTeleop::msgToState(const hid::Controller360State &msg,
   buttonState[ButtonIdSlew]     = msg.right_trig;
 }
 
-bool KuonTeleop::buttonOffToOn(int id, ButtonState &buttonState)
-{
-  return (m_buttonState[id] == 0) && (buttonState[id] == 1);
-}
-
 void KuonTeleop::execAllButtonActions(ButtonState &buttonState)
 {
+  buttonEStop(buttonState);
+
+  if( canMove() )
+  {
+    buttonSpeed(buttonState);
+    buttonBrake(buttonState);
+    buttonSlew(buttonState);
+  }
+
+  buttonGovernorUp(buttonState);
+  buttonGovernorDown(buttonState);
+
+  if( m_eState == TeleopStateReady )
+  {
+    buttonPause(buttonState);
+  }
+  else if( m_eState == TeleopStatePaused )
+  {
+    buttonStart(buttonState);
+  }
 }
 
 void KuonTeleop::buttonStart(ButtonState &buttonState)
 {
-  if( buttonOffToOn(ButtonIdPause, buttonState) )
+  if( buttonOffToOn(ButtonIdStart, buttonState) )
   {
     ROS_INFO("Manual operation active, auto mode disabled.");
 
@@ -515,6 +555,13 @@ void KuonTeleop::buttonPause(ButtonState &buttonState)
 
     m_eState = TeleopStatePaused;
 
+    //
+    // Set 'previous' pattern to long pause state. This is the Xbox default
+    // power-on pattern. Then go to short term 'pause' pattern. The Xbox
+    // controller will automatically time out this pattern and transition to
+    // the previous pattern.
+    //
+    setLED(LEDPatOn);
     setLED(LEDPatPaused);
   }
 }
@@ -557,6 +604,9 @@ void KuonTeleop::buttonEStop(ButtonState &buttonState)
       if( intvlCounter <= intvlTimeout )
       {
         estop();
+        m_eState = TeleopStatePaused;
+        setLED(LEDPatOn);       // see comment block in buttonPause()
+        setLED(LEDPatPaused);
       }
       clicks = 0;
       intvlCounter = 0;
@@ -577,9 +627,7 @@ void KuonTeleop::buttonGovernorUp(ButtonState &buttonState)
   {
     inc = 0.1;
 
-    governor += inc;
-
-    if( governor > 1.0 )
+    if( (governor + inc) > 1.0 )
     {
       inc = 1.0 - governor;
     }
@@ -598,7 +646,7 @@ void KuonTeleop::buttonGovernorDown(ButtonState &buttonState)
   float governor = m_msgRobotStatus.governor_value;
   float dec;
 
-  if( buttonOffToOn(ButtonIdGovUp, buttonState) )
+  if( buttonOffToOn(ButtonIdGovDown, buttonState) )
   {
     dec = -0.1;
 
@@ -607,7 +655,7 @@ void KuonTeleop::buttonGovernorDown(ButtonState &buttonState)
       dec = -governor;
     }
 
-    if( dec == 0.0 )
+    if( dec >= 0.0 )
     {
       return;
     }
@@ -620,7 +668,7 @@ void KuonTeleop::buttonBrake(ButtonState &buttonState)
 {
   int   brake;
 
-  if( canMove() )
+  if( buttonDiff(ButtonIdBrake, buttonState) )
   {
     brake = 31 - (int)(31.0 * (float)buttonState[ButtonIdBrake]/255.0);
 
@@ -632,7 +680,7 @@ void KuonTeleop::buttonSlew(ButtonState &buttonState)
 {
   int   slew;
 
-  if( canMove() )
+  if( buttonDiff(ButtonIdSlew, buttonState) )
   {
     slew = (int)(80.0 - (float)buttonState[ButtonIdSlew]/255.0);
 
@@ -640,45 +688,51 @@ void KuonTeleop::buttonSlew(ButtonState &buttonState)
   }
 }
 
-void KuonTeleop::buttonMove(ButtonState &buttonState)
+void KuonTeleop::buttonSpeed(ButtonState &buttonState)
 {
   int   joy_x;
   int   joy_y;
   int   speedLeft;
   int   speedRight;
 
-  if( canMove() )
-  {
-    joy_x = buttonState[ButtonIdMoveX];
-    joy_y = buttonState[ButtonIdMoveY];
+  // Note: kuon_controller has watchdog on this subscribed speed message. It
+  // will timout and stop the robot if not sent frequently. So always send.
+  //
+  //if( !buttonDiff(ButtonIdMoveX, buttonState) &&
+  //    !buttonDiff(ButtonIdMoveY, buttonState) )
+  //{
+  //  return;
+  //}
 
-    // mix throttle x and y values
-    speedLeft  = joy_x + joy_y;
-    speedRight = joy_y - joy_x;
+  joy_x = buttonState[ButtonIdMoveX];
+  joy_y = buttonState[ButtonIdMoveY];
+
+  // mix throttle x and y values
+  speedLeft  = joy_x + joy_y;
+  speedRight = joy_y - joy_x;
   
-    // scale 16-bit throttle values to 9-bit speed values
-    speedLeft  >>= 7;
-    speedRight >>= 7;
+  // scale 16-bit throttle values to 9-bit speed values
+  speedLeft  >>= 7;
+  speedRight >>= 7;
 
-    // cap speeds
-    if( speedLeft > 249 )
-    {
-      speedLeft = 249;
-    }
-    else if( speedLeft < -249 )
-    {
-      speedLeft = -249;
-    }
-
-    if( speedRight > 249 )
-    {
-      speedRight = 249;
-    }
-    else if( speedRight < -249 )
-    {
-      speedRight = -249;
-    }
-
-    publishSpeedCmd(speedLeft, speedRight);
+  // cap speeds
+  if( speedLeft > 249 )
+  {
+    speedLeft = 249;
   }
+  else if( speedLeft < -249 )
+  {
+    speedLeft = -249;
+  }
+
+  if( speedRight > 249 )
+  {
+    speedRight = 249;
+  }
+  else if( speedRight < -249 )
+  {
+    speedRight = -249;
+  }
+
+  publishSpeedCmd(speedLeft, speedRight);
 }

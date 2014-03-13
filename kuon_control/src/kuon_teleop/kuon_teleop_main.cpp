@@ -55,6 +55,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
+//
+// System
+// 
+#include <unistd.h>
 #include <signal.h>
 #include <string>
 
@@ -166,7 +170,7 @@ static void sigHandler(int sig)
   RcvSignal = sig;
 
   // All the default sigint handler does is call shutdown()
-  ros::shutdown();
+  //ros::shutdown();
 }
 
 /*!
@@ -286,7 +290,8 @@ int main(int argc, char *argv[])
 
   if( ros::ok() )
   {
-    teleop.putRobotInSafeMode();
+    teleop.putRobotInSafeMode(true);
+    usleep(1000000);
   }
 
   return APP_EC_OK;

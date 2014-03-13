@@ -163,7 +163,7 @@ namespace kuon
      */
     enum LEDPat
     {
-      LEDPatUninit = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox pattern
+      LEDPatOn     = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox on pattern
       LEDPatPaused = XBOX360_LED_PAT_ALL_SPIN_2,  ///< temp, auto-trans to blink
       LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< spin
     };
@@ -224,8 +224,11 @@ namespace kuon
 
     /*!
      * \brief Put robot into safe mode.
+     *
+     * \param bHard   Harden safe mode. When teleop node dies or xbox is 
+     *                physically disconnected, robot is set to known defaults.
      */
-    void putRobotInSafeMode();
+    void putRobotInSafeMode(bool bHard);
 
     bool canMove()
     {
@@ -276,7 +279,8 @@ namespace kuon
     ButtonState       m_buttonState;    ///< saved button state
 
     // messages
-    kuon_control::KuonStatus m_msgRobotStatus; ///< saved last Kuon status 
+    kuon_control::KuonStatus  m_msgRobotStatus; ///< saved last Kuon status 
+    hid::ConnStatus           m_msgConnStatus;  ///< saved last conn status 
 
 
     //..........................................................................
@@ -365,7 +369,15 @@ namespace kuon
     void msgToState(const hid::Controller360State &msg,
                     ButtonState                   &buttonState);
 
-    bool buttonOffToOn(int id, ButtonState &buttonState);
+    bool buttonOffToOn(int id, ButtonState &buttonState)
+    {
+      return (m_buttonState[id] == 0) && (buttonState[id] == 1);
+    }
+
+    bool buttonDiff(int id, ButtonState &buttonState)
+    {
+      return m_buttonState[id] != buttonState[id];
+    }
 
     void execAllButtonActions(ButtonState &buttonState);
 
@@ -383,7 +395,7 @@ namespace kuon
 
     void buttonSlew(ButtonState &buttonState);
 
-    void buttonMove(ButtonState &buttonState);
+    void buttonSpeed(ButtonState &buttonState);
   };
 
 } // namespace kuon
