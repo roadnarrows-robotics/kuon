@@ -164,7 +164,7 @@ namespace kuon
     enum LEDPat
     {
       LEDPatOn     = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox on pattern
-      LEDPatPaused = XBOX360_LED_PAT_ALL_SPIN_2,  ///< temp, auto-trans to blink
+      LEDPatPaused = XBOX360_LED_PAT_ALL_SPIN_2,  ///< temp, auto-trans to prev
       LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< spin
     };
 
