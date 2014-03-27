@@ -38,6 +38,8 @@ from Tkconstants import *
 from tkFileDialog import *
 import tkFont
 
+import webbrowser
+
 from pan_tilt_control.Utils import *
 
 
