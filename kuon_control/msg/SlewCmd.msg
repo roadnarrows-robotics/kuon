@@ -1,1 +1,1 @@
-int8 val
+float32 val
