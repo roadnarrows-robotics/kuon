@@ -12,4 +12,6 @@ industrial_msgs/TriState  in_error          # in error condition: TRUE FALSE
 int32 error_code                            # kuon error code
 
 # Kuon extensions
-float32 governor                            # 0 - 1 of maximum speed
+float32       governor                      # 0 - 1 of maximum speed
+float32       battery                       # battery estimated energy (Wh)
+MotorHealth[] motor_health                  # motor health

@@ -1,158 +1,461 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Package: RoadNarrows Robotics ROS Kuon Package
+// Package:   RoadNarrows Robotics Kuon Robotiic Mobile Platform ROS Package
 //
-// Link: https://github.com/roadnarrows-robotics/kuon
+// Link:      https://github.com/roadnarrows-robotics/kuon
 //
-// ROS Node: kuon_control
+// ROS Node:  kuon_control
 //
-// File: kuon_control.h
+// File:      kuon_control.h
 //
 /*! \file
-*
-* \brief The ROS kuon_control node supported services.
-*
-* \author Daniel Packard (daniel@roadnarrows.com)
-*
-* \par Copyright:
-* (C) 2013 RoadNarrows
-* (http://www.roadnarrows.com)
-* \n All Rights Reserved
-*/
+ *
+ * $LastChangedDate$
+ * $Rev$
+ *
+ * \brief The ROS kuon_control node class interface.
+ *
+ * \author Danial Packard (daniel@roadnarrows.com)
+ * \author Robin Knight (robin.knight@roadnarrows.com)
+ *
+ * \par Copyright:
+ * (C) 2013-2014  RoadNarrows
+ * (http://www.roadnarrows.com)
+ * \n All Rights Reserved
+ */
 /*
-* @EulaBegin@
-*
-* Permission is hereby granted, without written agreement and without
-* license or royalty fees, to use, copy, modify, and distribute this
-* software and its documentation for any purpose, provided that
-* (1) The above copyright notice and the following two paragraphs
-* appear in all copies of the source code and (2) redistributions
-* including binaries reproduces these notices in the supporting
-* documentation. Substantial modifications to this software may be
-* copyrighted by their authors and need not follow the licensing terms
-* described here, provided that the new terms are clearly indicated in
-* all files where they apply.
-*
-* IN NO EVENT SHALL THE AUTHOR, ROADNARROWS LLC, OR ANY MEMBERS/EMPLOYEES
-* OF ROADNARROW LLC OR DISTRIBUTORS OF THIS SOFTWARE BE LIABLE TO ANY
-* PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
-* DAMAGES ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION,
-* EVEN IF THE AUTHORS OR ANY OF THE ABOVE PARTIES HAVE BEEN ADVISED OF
-* THE POSSIBILITY OF SUCH DAMAGE.
-*
-* THE AUTHOR AND ROADNARROWS LLC SPECIFICALLY DISCLAIM ANY WARRANTIES,
-* INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-* FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN
-* "AS IS" BASIS, AND THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO
-* PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-*
-* @EulaEnd@
-*/
+ * @EulaBegin@
+ * 
+ * Permission is hereby granted, without written agreement and without
+ * license or royalty fees, to use, copy, modify, and distribute this
+ * software and its documentation for any purpose, provided that
+ * (1) The above copyright notice and the following two paragraphs
+ * appear in all copies of the source code and (2) redistributions
+ * including binaries reproduces these notices in the supporting
+ * documentation.   Substantial modifications to this software may be
+ * copyrighted by their authors and need not follow the licensing terms
+ * described here, provided that the new terms are clearly indicated in
+ * all files where they apply.
+ * 
+ * IN NO EVENT SHALL THE AUTHOR, ROADNARROWS LLC, OR ANY MEMBERS/EMPLOYEES
+ * OF ROADNARROW LLC OR DISTRIBUTORS OF THIS SOFTWARE BE LIABLE TO ANY
+ * PARTY FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
+ * DAMAGES ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION,
+ * EVEN IF THE AUTHORS OR ANY OF THE ABOVE PARTIES HAVE BEEN ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * THE AUTHOR AND ROADNARROWS LLC SPECIFICALLY DISCLAIM ANY WARRANTIES,
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN
+ * "AS IS" BASIS, AND THE AUTHORS AND DISTRIBUTORS HAVE NO OBLIGATION TO
+ * PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+ * 
+ * @EulaEnd@
+ */
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifndef _KUON_CONTROL_H
 #define _KUON_CONTROL_H
+
+//
+// System
+//
 #include <string>
+#include <map>
 
-#include "KuonRobot.h"
+//
+// Boost libraries
+//
+#include <boost/bind.hpp>
 
+//
+// ROS
+//
 #include "ros/ros.h"
+#include "actionlib/server/simple_action_server.h"
+#include "control_msgs/FollowJointTrajectoryAction.h"
+#include "control_msgs/FollowJointTrajectoryAction.h"
 
-#include "kuon_control/BrakeCmd.h"
+//
+// ROS generated core, industrial, and kuon messages.
+//
+#include "trajectory_msgs/JointTrajectory.h"
+#include "sensor_msgs/JointState.h"
+#include "industrial_msgs/RobotStatus.h"
+#include "kuon_control/JointStateExtended.h"
+#include "kuon_control/RobotStatusExtended.h"
+
+//
+// ROS generatated kuon services.
+//
 #include "kuon_control/EStop.h"
+#include "kuon_control/GetProductInfo.h"
 #include "kuon_control/IncrementGovernor.h"
-#include "kuon_control/KuonState.h"
-#include "kuon_control/KuonStatus.h"
-#include "kuon_control/QueryVersion.h"
+#include "kuon_control/IsAlarmed.h"
+#include "kuon_control/IsDescLoaded.h"
 #include "kuon_control/ResetEStop.h"
-#include "kuon_control/SlewCmd.h"
-#include "kuon_control/SpeedCmd.h"
-#include "kuon_control/Version.h"
+#include "kuon_control/SetGovernor.h"
+#include "kuon_control/SetRobotMode.h"
+#include "kuon_control/Stop.h"
 
-namespace kuon_control 
+//
+// ROS generated action servers.
+//
+
+//
+// RoadNarrows
+//
+#include "rnr/rnrconfig.h"
+#include "rnr/log.h"
+
+//
+// RoadNarrows embedded kuon library.
+//
+#include "Kuon/kuon.h"
+#include "Kuon/kuonRobot.h"
+
+//
+// Node headers.
+//
+#include "kuon_control.h"
+
+
+namespace kuon_control
 {
-
-class KuonControlNode 
-{
-public:
-
-  KuonControlNode()
+  /*!
+   * \brief The class embodiment of the kuon_control ROS node.
+   */
+  class KuonControl
   {
-    m_pRobot = new KuonRobot();
-    m_nWatchDog = -1;
-  }
+  public:
+    /*! map of ROS server services type */
+    typedef std::map<std::string, ros::ServiceServer> MapServices;
 
-  ~KuonControlNode() {disconnect();}
+    /*! map of ROS client services type */
+    typedef std::map<std::string, ros::ServiceClient> MapClientServices;
+    
+    /*! map of ROS publishers type */
+    typedef std::map<std::string, ros::Publisher> MapPublishers;
 
-  int connect();
-  int disconnect();
+    /*! map of ROS subscriptions type */
+    typedef std::map<std::string, ros::Subscriber> MapSubscriptions;
 
-  // --- Service callbacks
-  bool EStop(kuon_control::EStop::Request &req,
-             kuon_control::EStop::Response &rsp);
+    /*!
+     * \brief Default initialization constructor.
+     *
+     * \param nh  Bound node handle.
+     * \param hz  Application nominal loop rate in Hertz.
+     */
+    KuonControl(ros::NodeHandle &nh, double hz);
 
-  bool ResetEStop(kuon_control::ResetEStop::Request &req,
-                  kuon_control::ResetEStop::Response &rsp);
+    /*!
+     * \brief Destructor.
+     */
+    virtual ~KuonControl();
 
-  bool QueryVersion(kuon_control::QueryVersion::Request &req,
-                    kuon_control::QueryVersion::Response &rsp);
+    /*!
+     * \brief Configure Kuon product specifics.
+     *
+     * \param strCfgFile    XML configuration file name.
+     *
+     * \return Returns KUON_OK of success, \h_lt 0 on failure.
+     */
+    virtual int configure(const std::string &strCfgFile);
 
-  bool IncrementGovernor(kuon_control::IncrementGovernor::Request &req,
-                         kuon_control::IncrementGovernor::Response &rsp);
-
-  // --- Subscriptions
-  void brake_cmdCB(const kuon_control::BrakeCmd &cmd)
-  {
-    ROS_INFO("received brake command: %d",cmd.val );
-    m_pRobot->setBrake(cmd.val);
-  }
-
-  void slew_cmdCB(const kuon_control::SlewCmd &cmd)
-  {
-    ROS_INFO("received slew command: %d",cmd.val);
-    m_pRobot->setSlew(cmd.val);
-  }
-
-  void speed_cmdCB(const kuon_control::SpeedCmd &cmd)
-  {
-    ROS_INFO("received speed command: %d %d",cmd.left, cmd.right);
-    m_nWatchDog = 5;
-    m_pRobot->setSpeeds(cmd.left, cmd.right);
-  }
-
-  void checkWatchDog()
-  {
-    if(m_nWatchDog-- == 0)
+    /*!
+     * \brief Connect to Kuon hardware.
+     *
+     * \param strDevMotorCtlr0    Motor controller 0.
+     * \param strDevMotorCtlr1    Motor controller 1.
+     * \param nBaudRateMotorCtlr  Motor ontroller baud rate.
+     *
+     * \return Returns KUON_OK of success, \h_lt 0 on failure.
+     */
+    int connect(const std::string &strDevMotorCtlr0,
+                const std::string &strDevMotorCtlr1,
+                int                nBaudRateMotorCtlr)
     {
-      m_nWatchDog = -1;
-      m_pRobot->setSpeeds(0,0);
+      m_robot.connect(strDevMotorCtlr0, strDevMotorCtlr1, nBaudRateMotorCtlr);
     }
-  }
 
-  void setGovernor(float v){m_pRobot->SetGovernorVal(v);}
+    /*!
+     * \brief Disconnect from Kuon.
+     *
+     * \return Returns KUON_OK of success, \h_lt 0 on failure.
+     */
+    int disconnect()
+    {
+      m_robot.disconnect();
+    }
 
-  
-  // --- Publications
-  int UpdateStatus(kuon_control::KuonStatus *status)
-  {
-    KuonStatus_T s2 = m_pRobot->updateStatus();
-    status->e_stopped = s2.e_stopped;
-    status->mode = s2.mode;
-    status->drives_powered = s2.drives_powered;
-    status->in_motion = s2.in_motion;
-    status->in_error = s2.in_error;
-    status->governor_value = s2.governor_value;
-    return 0;
-  }
+    /*!
+     * \brief Advertise all server services.
+     */
+    virtual void advertiseServices();
 
-  int UpdateState(kuon_control::KuonState &state);
+    /*!
+     * \brief Initialize client services.
+     */
+    virtual void clientServices()
+    {
+      // No client services
+    }
 
-protected:
-  KuonRobot *m_pRobot;      ///< Kuon robot handle
-  bool       m_bIsEStopped; ///< Kuon is [not] estopped
-  float      m_fGovernor;   ///< Normalized governor setting [min:0.0, max:1.0]
-  int        m_nWatchDog;   ///< passive keep-alive
-};
+    /*!
+     * \brief Advertise all publishers.
+     *
+     * \param nQueueDepth   Maximum queue depth.
+     */
+    virtual void advertisePublishers(int nQueueDepth=10);
 
-}
+    /*!
+     * \brief Subscribe to all topics.
+     *
+     * \param nQueueDepth   Maximum queue depth.
+     */
+    virtual void subscribeToTopics(int nQueueDepth=10);
+
+    /*!
+     * \brief Publish.
+     *
+     * Call in main loop.
+     */
+    virtual void publish();
+
+    /*!
+     * \brief Get bound node handle.
+     *
+     * \return Node handle.
+     */
+    ros::NodeHandle &getNodeHandle()
+    {
+      return m_nh;
+    }
+
+    /*!
+     * \brief Get bound embedded robot instance.
+     *
+     * \return Robot instance.
+     */
+    kuon::KuonRobot &getRobot()
+    {
+      return m_robot;
+    }
+
+    /*!
+     * \brief Update joint state message from current robot joint state.
+     *
+     * \param [in] state  Robot joint state.
+     * \param [out] msg   Joint state message.
+     */
+    void updateJointStateMsg(kuon::KuonJointStatePoint &state,
+                             sensor_msgs::JointState   &msg);
+
+    /*!
+     * \brief Update extended joint state message from current robot joint
+     * state.
+     *
+     * \param [in] state  Robot joint state.
+     * \param [out] msg   Extended joint state message.
+     */
+    void updateExtendedJointStateMsg(kuon::KuonJointStatePoint &state,
+                                     JointStateExtended        &msg);
+
+    /*!
+     * \brief Update robot status message from current robot status.
+     *
+     * \param [in] status Robot status.
+     * \param [out] msg   Robot status message.
+     */
+    void updateRobotStatusMsg(kuon::KuonRobotStatus        &status,
+                              industrial_msgs::RobotStatus &msg);
+
+    /*!
+     * \brief Update extended robot status message from current robot status.
+     *
+     * \param [in] status Robot status.
+     * \param [out] msg   Extended roobt status message.
+     */
+    void updateExtendedRobotStatusMsg(kuon::KuonRobotStatus &status,
+                                      RobotStatusExtended   &msg);
+
+  protected:
+    ros::NodeHandle  &m_nh;       ///< the node handler bound to this instance
+    double            m_hz;       ///< application nominal loop rate
+    kuon::KuonRobot   m_robot;    ///< real-time, Kuon robotic mobile platform
+
+    // ROS services, publishers, subscriptions.
+    MapServices       m_services;       ///< Kuon control server services
+    MapClientServices m_clientServices; ///< Kuon control client services
+    MapPublishers     m_publishers;     ///< Kuon control publishers
+    MapSubscriptions  m_subscriptions;  ///< Kuon control subscriptions
+
+    // Messages for published data.
+    sensor_msgs::JointState       m_msgJointState;  ///< joint state message
+    JointStateExtended            m_msgJointStateEx;
+                                              ///< extended joint state message
+    industrial_msgs::RobotStatus  m_msgRobotStatus; ///< robot status message
+    RobotStatusExtended           m_msgRobotStatusEx;
+                                              ///< extended robot status message
+
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // Service callbacks
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Emergency stop robot service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool estop(kuon_control::EStop::Request  &req,
+               kuon_control::EStop::Response &rsp);
+
+    /*!
+     * \brief Freeze (stop) robot service callback.
+     *
+     * The motor 'parking' brake is set to full.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool freeze(kuon_control::Freeze::Request  &req,
+                kuon_control::Freeze::Response &rsp);
+
+    /*!
+     * \brief Get robot product information service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool getProductInfo(kuon_control::GetProductInfo::Request  &req,
+                        kuon_control::GetProductInfo::Response &rsp);
+
+    /*!
+     * \brief Increment/decrement robot speed limit governor service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool incrementGovernor(kuon_control::IncrementGovernor::Request  &req,
+                           kuon_control::IncrementGovernor::Response &rsp);
+
+    /*!
+     * \brief Test if robot is alarmed service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool isAlarmed(kuon_control::IsAlarmed::Request  &req,
+                   kuon_control::IsAlarmed::Response &rsp);
+
+    /*!
+     * \brief Test if robot description has been loaded service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool isDescLoaded(kuon_control::IsDescLoaded::Request  &req,
+                      kuon_control::IsDescLoaded::Response &rsp);
+
+    /*!
+     * \brief Release drive power to robot motors service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool release(kuon_control::Release::Request  &req,
+                 kuon_control::Release::Response &rsp);
+
+    /*!
+     * \brief Release robot's emergency stop condition service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool resetEStop(kuon_control::ResetEStop::Request  &req,
+                    kuon_control::ResetEStop::Response &rsp);
+
+    /*!
+     * \brief Set robot speed limit governor service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool setGovernor(kuon_control::SetGovernor::Request  &req,
+                     kuon_control::SetGovernor::Response &rsp);
+
+    /*!
+     * \brief Set robot's manual/auto mode service callback.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool setRobotMode(kuon_control::SetRobotMode::Request  &req,
+                      kuon_control::SetRobotMode::Response &rsp);
+
+    /*!
+     * \brief Stop (freeze) robot service callback.
+     *
+     * The motor 'parking' brake is set to full.
+     *
+     * \param req   Service request.
+     * \param rsp   Service response.
+     *
+     * \return Returns true on success, false on failure.
+     */
+    bool stop(kuon_control::Stop::Request  &req,
+              kuon_control::Stop::Response &rsp);
+
+
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // Topic Publishers
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Publish joint state and extended joint state topics.
+     */
+    void publishJointState();
+
+    /*!
+     * \brief Publish robot status and extended robot status topics.
+     */
+    void publishRobotStatus();
+
+
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // Subscribed Topic Callbacks
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Execute move trajectory subscribed topic callback.
+     *
+     * \param jt  Joint trajectory message.
+     */
+    void execMoveCmd(const trajectory_msgs::JointTrajectory &jt);
+  };
+
+} // namespace hc
+
 
 #endif // _KUON_CONTROL_H

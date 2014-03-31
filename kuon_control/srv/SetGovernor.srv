@@ -1,0 +1,5 @@
+# Kuon kuon_control/SetGovernor service
+
+float32 governor  # target new governor setting [0.0, 1.0]
+---
+float32 governor  # resulting actual governor setting [0.0, 1.0]

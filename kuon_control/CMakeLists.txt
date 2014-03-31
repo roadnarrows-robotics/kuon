@@ -3,6 +3,8 @@ project(kuon_control)
 
 find_package(catkin 
   REQUIRED COMPONENTS 
+  industrial_msgs
+  sensor_msgs
   std_msgs 
   genmsg 
   message_generation 
@@ -21,25 +23,36 @@ add_message_files(
   DIRECTORY msg
   FILES 
     BrakeCmd.msg
-    KuonState.msg
-    KuonStatus.msg
+    JointStateExtended.msg
+    MotorHealth.msg
+    ProductInfo.msg
+    RobotStatusExtended.msg
     SlewCmd.msg
     SpeedCmd.msg
-    Version.msg
+    Units.msg
 )
 
 add_service_files(
   DIRECTORY srv
   FILES
     EStop.srv
+    Freeze.srv
+    GetProductInfo.srv
     IncrementGovernor.srv
-    QueryVersion.srv
+    IsAlarmed.srv
+    IsDescLoaded.srv
+    Release.srv
     ResetEStop.srv
+    SetGovernor.srv
+    SetRobotMode.srv
+    Stop.srv
 )
 
 ## Generate added messages/services/actions with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  industrial_msgs
+  sensor_msgs
   std_msgs
 )
 

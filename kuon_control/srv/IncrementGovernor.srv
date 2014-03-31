@@ -1,3 +1,5 @@
-float32 delta
+# Kuon kuon_control/IncrementGovernor service
+
+float32 delta     # plus/minus delta from current governor setting
 ---
-float32 value
+float32 governor  # resulting actual governor setting [0.0, 1.0]

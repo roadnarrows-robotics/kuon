@@ -1,20 +1,18 @@
 ### Kuon kuon_control/JointStateExtended message
 
+# Joints in the case of Kuon are motors.
+
 # Base sensor_msgs/JointState
 Header    header              # standard header
 
-string[]       name           # joint name
-float64[]      position       # joint position (radians)
-float64[]      velocity       # joint velocity (percent of maximum)
-float64[]      effort         # joint torque load (unitless scale)
+string[]        name          # motor name
+float64[]       position      # motor position (radians)
+float64[]       velocity      # motor velocity w (radians/second)
+float64[]       effort        # motor torque T = N-m (newton-meters)
 
 # Kuon extensions
-uint8[]        master_servo_id  # master servo id
-uint8[]        slave_servo_id   # slave servo id
-int32[]        odometer_pos     # joint odometer position (encoder ticks)
-int32[]        encoder_pos      # servo encoder position
-int32[]        raw_speed        # servo raw speed (unitless scale)
-HekOpState[]   op_state         # servo operation state:
-                                #   UNCALIBRATED, CALIBRATING, CALIBRATED
-industrial_msgs/TriState[] opt_switch1  # optical limit switch 1 state
-industrial_msgs/TriState[] opt_switch2  # optical limit switch 2 state
+float64[]       odometer      # motor odometer m (meters)
+int32[]         encoder       # motor encoder position (ticks)
+float64[]       velocity_mps  # motor velocity v (meters/second)
+float64[]       power_elec    # motor input electrical power Pe (watts)
+float64[]       power_mech    # motor output mechanical power Pm (watts)
