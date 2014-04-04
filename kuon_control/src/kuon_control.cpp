@@ -112,6 +112,8 @@
 //
 #include "Kuon/kuon.h"
 #include "Kuon/hekUtils.h"
+#include "Kuon/kuonStatus.h"
+#include "Kuon/kuonJoint.h"
 #include "Kuon/kuonRobot.h"
 
 //
@@ -464,10 +466,10 @@ void KuonControl::publishJointState()
 
 void KuonControl::publishRobotStatus()
 {
-  KuonRobotState  status;   // really status 
+  KuonRobotStatus status;   // really status 
 
   // get robot's extended status.
-  m_robot.getRobotState(status);
+  m_robot.getRobotStatus(status);
 
   // update robot status message
   updateRobotStatusMsg(status, m_msgRobotStatus);

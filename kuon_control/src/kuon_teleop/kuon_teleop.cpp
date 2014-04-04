@@ -98,7 +98,7 @@
 #include "kuon_control/IncrementGovernor.h"
 #include "kuon_control/QueryVersion.h"
 #include "kuon_control/ResetEStop.h"
-// TBD #include "kuon_control/SetRobotMode.h"
+#include "kuon_control/SetRobotMode.h"
 
 //
 // ROS generated HID messages.
@@ -182,9 +182,9 @@ void KuonTeleop::clientServices()
   strSvc = "/xbox_360/set_rumble";
   m_clientServices[strSvc] = m_nh.serviceClient<hid::SetRumble>(strSvc);
 
-  // TBD strSvc = "/kuon_control/set_robot_mode";
-  // TBD m_clientServices[strSvc] =
-  //    m_nh.serviceClient<kuon_control::SetRobotMode>(strSvc);
+  strSvc = "/kuon_control/set_robot_mode";
+  m_clientServices[strSvc] =
+    m_nh.serviceClient<kuon_control::SetRobotMode>(strSvc);
 
   strSvc = "/kuon_control/estop";
   m_clientServices[strSvc] = m_nh.serviceClient<kuon_control::EStop>(strSvc);
@@ -682,7 +682,7 @@ void KuonTeleop::buttonSlew(ButtonState &buttonState)
 
   if( buttonDiff(ButtonIdSlew, buttonState) )
   {
-    slew = (int)(80.0 - (float)buttonState[ButtonIdSlew]/255.0);
+    slew = (int)(40.0 * (float)buttonState[ButtonIdSlew]/255.0);
 
     publishSlewCmd(slew);
   }

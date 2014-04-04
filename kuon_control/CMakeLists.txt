@@ -61,7 +61,6 @@ catkin_package(CATKIN_DEPENDS)
 add_executable(kuon_control 
   src/kuon_control_main.cpp 
   src/kuon_control.cpp 
-  src/KuonRobot.cpp
 )
 
 add_executable(kuon_teleop 
