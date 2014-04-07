@@ -82,17 +82,25 @@
 #include "trajectory_msgs/JointTrajectory.h"
 #include "sensor_msgs/JointState.h"
 #include "industrial_msgs/RobotStatus.h"
+#include "kuon_control/BrakeCmd.h"
 #include "kuon_control/JointStateExtended.h"
+#include "kuon_control/MotorHealth.h"
+#include "kuon_control/ProductInfo.h"
 #include "kuon_control/RobotStatusExtended.h"
+#include "kuon_control/SlewCmd.h"
+#include "kuon_control/SpeedCmd.h"
+#include "kuon_control/Units.h"
 
 //
 // ROS generatated kuon services.
 //
 #include "kuon_control/EStop.h"
+#include "kuon_control/Freeze.h"
 #include "kuon_control/GetProductInfo.h"
 #include "kuon_control/IncrementGovernor.h"
 #include "kuon_control/IsAlarmed.h"
 #include "kuon_control/IsDescLoaded.h"
+#include "kuon_control/Release.h"
 #include "kuon_control/ResetEStop.h"
 #include "kuon_control/SetGovernor.h"
 #include "kuon_control/SetRobotMode.h"
@@ -106,6 +114,7 @@
 // RoadNarrows
 //
 #include "rnr/rnrconfig.h"
+#include "rnr/units.h"
 #include "rnr/log.h"
 
 //
@@ -448,11 +457,46 @@ namespace kuon_control
     // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
     /*!
+     * \brief Execute set brake subscribed topic callback.
+     *
+     * \param msg Subscribed message.
+     */
+    void execBrakeCmd(const kuon_control::BrakeCmd &msg);
+
+    /*!
+     * \brief Execute set power slew subscribed topic callback.
+     *
+     * \param msg Subscribed message.
+     */
+    void execSlewCmd(const kuon_control::SlewCmd &msg);
+
+    /*!
+     * \brief Execute set speed subscribed topic callback.
+     *
+     * \param msg Subscribed message.
+     */
+    void execSpeedCmd(const kuon_control::SpeedCmd &msg);
+
+    /*!
      * \brief Execute move trajectory subscribed topic callback.
      *
      * \param jt  Joint trajectory message.
      */
     void execMoveCmd(const trajectory_msgs::JointTrajectory &jt);
+
+
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    // Utilities
+    // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+    /*!
+     * \brief Convert kuon_control Units message 'enum' to standard RN units.
+     *
+     * \param u   Units to convert.
+     *
+     * \return Converted units.
+     */   
+    units_t toUnits(uint_t u);
   };
 
 } // namespace hc

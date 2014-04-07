@@ -4,4 +4,4 @@
 # the slew, the harder the acceleration.
 # Currently, slewing applies to all motors.
 
-float32 val
+float32 slew    # power slew [0.0 - 1.0]

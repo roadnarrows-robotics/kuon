@@ -81,17 +81,25 @@
 #include "trajectory_msgs/JointTrajectory.h"
 #include "sensor_msgs/JointState.h"
 #include "industrial_msgs/RobotStatus.h"
+#include "kuon_control/BrakeCmd.h"
 #include "kuon_control/JointStateExtended.h"
+#include "kuon_control/MotorHealth.h"
+#include "kuon_control/ProductInfo.h"
 #include "kuon_control/RobotStatusExtended.h"
+#include "kuon_control/SlewCmd.h"
+#include "kuon_control/SpeedCmd.h"
+#include "kuon_control/Units.h"
 
 //
 // ROS generatated kuon services.
 //
 #include "kuon_control/EStop.h"
+#include "kuon_control/Freeze.h"
 #include "kuon_control/GetProductInfo.h"
 #include "kuon_control/IncrementGovernor.h"
 #include "kuon_control/IsAlarmed.h"
 #include "kuon_control/IsDescLoaded.h"
+#include "kuon_control/Release.h"
 #include "kuon_control/ResetEStop.h"
 #include "kuon_control/SetGovernor.h"
 #include "kuon_control/SetRobotMode.h"
@@ -105,13 +113,15 @@
 // RoadNarrows
 //
 #include "rnr/rnrconfig.h"
+#include "rnr/units.h"
 #include "rnr/log.h"
 
 //
 // RoadNarrows embedded kuon library.
 //
 #include "Kuon/kuon.h"
-#include "Kuon/hekUtils.h"
+#include "Kuon/kuonUtils.h"
+#include "Kuon/kuonXmlCfg.h"
 #include "Kuon/kuonStatus.h"
 #include "Kuon/kuonJoint.h"
 #include "Kuon/kuonRobot.h"
@@ -222,7 +232,7 @@ void KuonControl::advertiseServices()
 
   strSvc = "set_governor";
   m_services[strSvc] = m_nh.advertiseService(strSvc,
-                                          &KuonControl::settGovernor,
+                                          &KuonControl::setGovernor,
                                           &(*this));
 
   strSvc = "set_robot_mode";
@@ -299,13 +309,11 @@ bool KuonControl::incrementGovernor(IncrementGovernor::Request  &req,
 {
   const char *svc = "increment_governor";
 
-  float  governor;
-
   ROS_DEBUG("%s", svc);
 
-  governor = m_robot.getGovernor() + req.delta;
+  rsp.governor = m_robot.incrementGovernor(req.delta);
 
-  rsp.governor = m_robot.setGovernor(governor);
+  ROS_INFO("Robot governor set at %5.1f%%.", rsp.governor * 100.0);
 
   return true;
 }
@@ -334,7 +342,7 @@ bool KuonControl::isDescLoaded(IsDescLoaded::Request  &req,
 
   ROS_DEBUG("%s", svc);
 
-  rsp.is_desc_loaded = m_robot.isCalibrated();
+  rsp.is_desc_loaded = m_robot.isDescribed();
 
   if( !rsp.is_desc_loaded )
   {
@@ -375,11 +383,13 @@ bool KuonControl::resetEStop(ResetEStop::Request  &req,
 bool KuonControl::setGovernor(SetGovernor::Request  &req,
                               SetGovernor::Response &rsp)
 {
-  const char *svc = "increment_governor";
+  const char *svc = "set_governor";
 
   ROS_DEBUG("%s", svc);
 
   rsp.governor = m_robot.setGovernor(req.governor);
+
+  ROS_INFO("Robot governor set at %5.1f%%.", rsp.governor * 100.0);
 
   return true;
 }
@@ -518,8 +528,6 @@ void KuonControl::updateJointStateMsg(KuonJointStatePoint     &state,
 void KuonControl::updateExtendedJointStateMsg(KuonJointStatePoint &state,
                                               JointStateExtended  &msg)
 {
-  KuonOpState  opstate;
-
   // 
   // Clear previous extended joint state data.
   //
@@ -533,6 +541,8 @@ void KuonControl::updateExtendedJointStateMsg(KuonJointStatePoint &state,
   msg.velocity_mps.clear();
   msg.power_elec.clear();
   msg.power_mech.clear();
+  msg.brake.clear();
+  msg.slew.clear();
 
   //
   // Set extended joint state header.
@@ -553,9 +563,11 @@ void KuonControl::updateExtendedJointStateMsg(KuonJointStatePoint &state,
 
     msg.odometer.push_back(state[n].m_fOdometer);
     msg.encoder.push_back(state[n].m_nEncoder);
-    msg.velocity_mps.push_back(state[n].m_fMps);
+    msg.velocity_mps.push_back(state[n].m_fVelocityMps);
     msg.power_elec.push_back(state[n].m_fPe);
     msg.power_mech.push_back(state[n].m_fPm);
+    msg.brake.push_back(state[n].m_fBrake);
+    msg.slew.push_back(state[n].m_fSlew);
   }
 }
 
@@ -581,7 +593,7 @@ void KuonControl::updateRobotStatusMsg(KuonRobotStatus              &status,
   msg.error_code          = status.m_nErrorCode;
 }
 
-void KuonControl::updateExtendedRobotStatusMsg(KuonRobotState      &status,
+void KuonControl::updateExtendedRobotStatusMsg(KuonRobotStatus     &status,
                                                RobotStatusExtended &msg)
 {
   MotorHealth health;
@@ -614,14 +626,14 @@ void KuonControl::updateExtendedRobotStatusMsg(KuonRobotState      &status,
   //
   // Health
   //
-  for(i=0; i<status.m_vecServoHealth.size(); ++i)
+  for(i=0; i<status.m_vecMotorHealth.size(); ++i)
   {
-    health.name     = status.m_vecServoHealth[i].m_strName;
-    health.temp     = status.m_vecServoHealth[i].m_fTemperature;
-    health.voltage  = status.m_vecServoHealth[i].m_fVoltage;
-    health.alarm    = status.m_vecServoHealth[i].m_uAlarms;
+    health.name     = status.m_vecMotorHealth[i].m_strName;
+    health.temp     = status.m_vecMotorHealth[i].m_fTemperature;
+    health.voltage  = status.m_vecMotorHealth[i].m_fVoltage;
+    health.alarm    = status.m_vecMotorHealth[i].m_uAlarms;
 
-    msg.servo_health.push_back(health);
+    msg.motor_health.push_back(health);
   }
 }
 
@@ -634,17 +646,49 @@ void KuonControl::subscribeToTopics(int nQueueDepth)
 {
   string  strSub;
 
+  strSub = "brake_cmd";
+  m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+                                          &KuonControl::execBrakeCmd,
+                                          &(*this));
+
+  strSub = "slew_cmd";
+  m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+                                          &KuonControl::execSlewCmd,
+                                          &(*this));
+
+  strSub = "speed_cmd";
+  m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
+                                          &KuonControl::execSpeedCmd,
+                                          &(*this));
+
   strSub = "move_command";
   m_subscriptions[strSub] = m_nh.subscribe(strSub, nQueueDepth,
                                           &KuonControl::execMoveCmd,
                                           &(*this));
 }
 
+void KuonControl::execBrakeCmd(const kuon_control::BrakeCmd &msg)
+{
+  m_robot.setBrake(msg.brake);
+}
+
+void KuonControl::execSlewCmd(const kuon_control::SlewCmd &msg)
+{
+  m_robot.setSlew(msg.slew);
+}
+
+void KuonControl::execSpeedCmd(const kuon_control::SpeedCmd &msg)
+{
+  units_t   units = toUnits(msg.units.e);
+
+  m_robot.setSpeed(msg.left_motors, msg.right_motors, units);
+}
+
 void KuonControl::execMoveCmd(const trajectory_msgs::JointTrajectory &jt)
 {
   ROS_DEBUG("Executing move_command.");
 
-  KuonJointTrajectoryPoint pt;
+  KuonWheelTrajectoryPoint pt;
 
   // load trajectory point
   for(int j=0; j<jt.joint_names.size(); ++j)
@@ -658,4 +702,22 @@ void KuonControl::execMoveCmd(const trajectory_msgs::JointTrajectory &jt)
   }
 
   m_robot.move(pt);
+}
+
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+// Utilities
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+units_t KuonControl::toUnits(uint_t u)
+{
+  switch(u)
+  {
+    case Units::UNITS_PERCENT:
+      return units_percent;
+    case Units::UNITS_NORM:
+      return units_norm;
+    default:
+      return units_raw;
+  }
 }

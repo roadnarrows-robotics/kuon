@@ -2,7 +2,11 @@
 
 ###############################################################################
 #
-# Package:  kuon
+# Package:   RoadNarrows Robotics Kuon Robotic Mobile Platform ROS Package
+#
+# Link:      https://github.com/roadnarrows-robotics/kuon
+#
+# ROS Node:  kuon_panel
 #
 # File: kuon_panel
 #
@@ -17,7 +21,7 @@
 ## \author Robin Knight (robin.knight@roadnarrows.com)
 ##  
 ## \par Copyright:
-##   (C) 2013.  RoadNarrows LLC.\n
+##   (C) 2013-2014.  RoadNarrows LLC.\n
 ##   (http://www.roadnarrows.com)\n
 ##   All Rights Reserved
 ##
@@ -37,26 +41,24 @@ from Tkconstants import *
 from tkFileDialog import *
 import tkFont
 
-from PIL import Image, ImageTk
-
-import webbrowser
-import xml.parsers.expat as expat
-
 import roslib; roslib.load_manifest('kuon_control')
 import rospy
 
-from kuon_control.msg import BrakeCmd           # publish
-from kuon_control.msg import KuonState          # subscribe (TBD)
-from kuon_control.msg import KuonStatus         # subscribe
-from kuon_control.msg import SlewCmd            # publish
-from kuon_control.msg import SpeedCmd           # publish
-from kuon_control.msg import Version            # service
-from kuon_control.srv import IncrementGovernor  # service (TBD)
-from kuon_control.srv import EStop              # service
-from kuon_control.srv import ResetEStop         # service
-from kuon_control.srv import QueryVersion       # service (TBD)
+from kuon_control.msg import BrakeCmd             # publish
+from kuon_control.srv import EStop                # service
+from kuon_control.srv import GetProductInfo       # service
+from kuon_control.srv import IncrementGovernor    # service
+from kuon_control.msg import JointStateExtended   # subscribe
+from kuon_control.msg import MotorHealth          # message
+from kuon_control.msg import RobotStatusExtended  # subscribe
+from kuon_control.srv import ResetEStop           # service
+from kuon_control.msg import SlewCmd              # publish
+from kuon_control.msg import SpeedCmd             # publish
 
-import kuon_control.msg
+from kuon_control.Utils import *
+from kuon_control.PanelConfig import *
+from kuon_control.AboutDlg import AboutDlg
+from kuon_control.WarnDlg import WarnDlg
 
 
 # ------------------------------------------------------------------------------
@@ -68,28 +70,16 @@ appVersion = '1.0.0'
 
 ## \brief Image search paths.
 imagePath = [
-  "/prj/pkg/Kuon/share/images",
-  "/usr/local/share/Kuon/images",
-  "/prj/pkg/appkit/share/images",
+  "/prj/share/appkit/images",
   "/usr/local/share/appkit/images"
 ]
 
-## \brief User's home directory.
-home = os.path.expanduser("~")
-
-## \brief Kuon user-specific configuration directory (in home directory).
-kuonUserDirName = ".kuon"
-
-## \brief kuon_panel application configuration file name.
-configFileName = "kuon_panel.xml"
-
-## \brief Configuration default.
-configDft = \
-{
-}
-
 ## \brief Alarm strings.
 alarmStrings = {
+  MotorHealth.ALARM_NONE:         "ok",
+  MotorHealth.ALARM_VOLTAGE:      "V",
+  MotorHealth.ALARM_TEMP:         "T",
+  MotorHealth.ALARM_COMM:         "comm",
 }
 
 ## \brief Common foreground colors.
@@ -1130,21 +1120,15 @@ class window(Frame):
   def initData(self, kw):
     self.m_bHasJointPanel = False # joint state panel [not] created 
                                   # application configuration
-    self.m_config         = configDft
+    self.m_config         = ConfigDlg.ConfigDft
     self.m_icons          = {}    # must keep loaded icons referenced
     self.m_wBttn          = {}    # button widgets
     self.m_keysFewMoves   = []    # gui button keys depending on calibration
     self.m_keysNoMoves    = []    # gui button keys depending on robot mode
     self.m_robotStatus    = {}    # robot status widgets, variables, and values
     self.m_robotJoint     = {}    # robot joint state widgets, variables, etc.
-    self.m_robotServo     = {}    # master servo to joint name map
+    self.m_robotMotor     = {}    # motor to joint name map
                                   # calibration state
-    self.m_calibState     = \
-      {
-        'calibrating':  False,    # [not] calibrating
-        'ac':           None,     # calibration action client
-        'id':           0         # after id
-      }
 
     if kw.has_key('config'):
       self.m_config = kw['config']
@@ -1159,6 +1143,8 @@ class window(Frame):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createWidgets(self):
+    self.m_imageLoader = ImageLoader(py_pkg='kuon_control.images',
+                                      image_paths=imagePath)
     self.createHeading()
     self.createLeftButtons()
     self.createCenterPanel()
@@ -1172,7 +1158,7 @@ class window(Frame):
   def createHeading(self):
     # rn logo
     w = Label(self)
-    self.m_icons['rn_logo'] = loadIcon("RNLogo48.png");
+    self.m_icons['rn_logo'] = self.m_imageLoader.load("RNLogo48.png");
     if self.m_icons['rn_logo']:
       w['image'] = self.m_icons['rn_logo']
     else:
@@ -1190,7 +1176,8 @@ class window(Frame):
 
     # kuon logo
     w = Label(self)
-    self.m_icons['kuon_logo'] = loadIcon("icons/icon_kuon_logo.png");
+    self.m_icons['kuon_logo'] = \
+        self.m_imageLoader.load("icons/icon_kuon_logo.png");
     if self.m_icons['kuon_logo']:
       w['image'] = self.m_icons['kuon_logo']
       w['anchor'] = E
@@ -1314,9 +1301,12 @@ class window(Frame):
 
     col += 1
 
-    self.m_icons['led_dark']  = loadIcon("icons/icon_led_dark_16.png")
-    self.m_icons['led_green'] = loadIcon("icons/icon_led_green_16.png")
-    self.m_icons['led_red']   = loadIcon("icons/icon_led_red_16.png")
+    self.m_icons['led_dark']  = \
+        self.m_imageLoader.load("icons/icon_led_dark_16.png")
+    self.m_icons['led_green'] = \
+        self.m_imageLoader.load("icons/icon_led_green_16.png")
+    self.m_icons['led_red']   = \
+        self.m_imageLoader.load("icons/icon_led_red_16.png")
 
     width = 10
 
@@ -1425,7 +1415,8 @@ class window(Frame):
     pady  = 3
     row   = 1
 
-    self.m_icons['kuon_top_down'] = loadIcon("KuonTopDown300.png")
+    self.m_icons['kuon_top_down'] = \
+        self.m_imageLoader.load("KuonTopDown300.png")
 
     w = Canvas(wframe, width=550, height=300)
     w.grid(row=row, column=0, columnspan=10, sticky=E+W)
@@ -1460,7 +1451,8 @@ class window(Frame):
     w = self.createButton(wframe, "ESTOP", "icons/icon_estop.png", self.estop,
                                   fg='red')
     w.grid(row=0, column=0, sticky=N+E+W)
-    self.m_icons['estop_reset'] = loadIcon("icons/icon_estop_reset.png")
+    self.m_icons['estop_reset'] = \
+        self.m_imageLoader.load("icons/icon_estop_reset.png")
 
     # clear alarms
     w = self.createButton(wframe, "Clear\nAlarms",
@@ -1522,7 +1514,7 @@ class window(Frame):
   #
   def createButton(self, parent, text, imagefile, command, fg='black'):
     key = str.lower(text.replace("\n", "_"))
-    self.m_icons[key] = loadIcon(imagefile)
+    self.m_icons[key] = self.m_imageLoader.load(imagefile)
     w = Button(parent)
     w['text']     = text
     if self.m_icons[key]:
@@ -1716,7 +1708,7 @@ class window(Frame):
         prodInfo = rsp.i
       except rospy.ServiceException, e:
         self.showError("Get product info request failed: %s." % (e.message))
-    dlg = aboutDlg(master=self, info=prodInfo)
+    dlg = AboutDlg(master=self, info=prodInfo, app_ver=appVersion)
   
   #
   ## \brief Update robot status.
@@ -2060,13 +2052,13 @@ Options and arguments:
     rospy.init_node("kuon_panel")
 
     # subscribe to extended robot status data
-    rospy.Subscriber("kuon_control/kuon_status", 
-                     KuonStatus, 
+    rospy.Subscriber("kuon_control/robot_status_ex", 
+                     RobotStatusExtended, 
                      self.updateRobotStatus) 
 
     # subscribe to extended joint state data
-    rospy.Subscriber("kuon_control/kuon_state", 
-                     KuonState, 
+    rospy.Subscriber("kuon_control/joint_state_ex", 
+                     JointStateExtended, 
                      self.updateWheelStates) 
 
     self.m_win.showInfo("Kuon interface initialized.")
@@ -2108,13 +2100,15 @@ Options and arguments:
   def run(self, argv=None, **kwargs):
   
     # parse command-line options and arguments
-    kwargs = self.getOptions(argv, **kwargs)
+    try:
+      kwargs = self.getOptions(argv, **kwargs)
+    except usage, e:
+      print e.msg
+      return 2
 
     # parse application configuration xml file
-    filename = home + os.path.sep + kuonUserDirName + os.path.sep + \
-        configFileName
-    xml = configXml()
-    config = xml.parse(filename)
+    xml = ConfigXml()
+    config = xml.parse()
     del xml
 
     # create root 

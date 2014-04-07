@@ -79,20 +79,29 @@
 //
 // ROS generated Kuon messages.
 //
-#include "kuon_control/BrakeCmd.h"      // publish
-#include "kuon_control/KuonStatus.h"    // subscribe (TBD)
-#include "kuon_control/KuonState.h"     // subscribe
-#include "kuon_control/SlewCmd.h"       // publish
-#include "kuon_control/SpeedCmd.h"      // publish
-#include "kuon_control/Version.h"       // service
+#include "kuon_control/BrakeCmd.h"            // publish
+#include "kuon_control/JointStateExtended.h"  // subscribe
+#include "kuon_control/MotorHealth.h"         // message
+#include "kuon_control/ProductInfo.h"         // service
+#include "kuon_control/RobotStatusExtended.h" // subscribe
+#include "kuon_control/SlewCmd.h"             // publish
+#include "kuon_control/SpeedCmd.h"            // publish
+#include "kuon_control/Units.h"               // message
 
 //
 // ROS generatated Kuon services.
 //
 #include "kuon_control/EStop.h"
+#include "kuon_control/Freeze.h"
+#include "kuon_control/GetProductInfo.h"
 #include "kuon_control/IncrementGovernor.h"
+#include "kuon_control/IsAlarmed.h"
+#include "kuon_control/IsDescLoaded.h"
+#include "kuon_control/Release.h"
 #include "kuon_control/ResetEStop.h"
-#include "kuon_control/QueryVersion.h"
+#include "kuon_control/SetGovernor.h"
+#include "kuon_control/SetRobotMode.h"
+#include "kuon_control/Stop.h"
 
 //
 // ROS generated HID messages.
@@ -163,9 +172,10 @@ namespace kuon
      */
     enum LEDPat
     {
+      LEDPatOff    = XBOX360_LED_PAT_ALL_OFF,     ///< all off
       LEDPatOn     = XBOX360_LED_PAT_ALL_BLINK,   ///< default xbox on pattern
-      LEDPatPaused = XBOX360_LED_PAT_ALL_SPIN_2,  ///< temp, auto-trans to prev
-      LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< spin
+      LEDPatPaused = XBOX360_LED_PAT_4_ON,        ///< pause teleop
+      LEDPatReady  = XBOX360_LED_PAT_ALL_SPIN     ///< ready to teleop
     };
 
     /*!
@@ -232,7 +242,16 @@ namespace kuon
 
     bool canMove()
     {
-      return (m_eState == TeleopStateReady) && !m_msgRobotStatus.e_stopped;
+      if((m_eState == TeleopStateReady) &&
+         (m_msgRobotStatus.e_stopped.val == industrial_msgs::TriState::FALSE) &&
+         (m_msgRobotStatus.in_error.val == industrial_msgs::TriState::FALSE))
+      {
+        return true;
+      }
+      else
+      {
+        return false;
+      }
     }
 
     /*!
@@ -268,18 +287,19 @@ namespace kuon
     MapSubscriptions  m_subscriptions;  ///< kuon teleop subscriptions
 
     // state
-    TeleopState       m_eState;         ///< teleoperation state
-    bool              m_bHasXboxComm;   ///< Xbox communications is [not] good
-    int               m_nWdXboxCounter; ///< Xbox watchdog counter
-    int               m_nWdXboxTimeout; ///< Xbox watchdog timeout
-    bool              m_bHasKuonComm;   ///< Kuon communications is [not] good
-    int               m_nWdKuonCounter; ///< Kuon watchdog counter
-    int               m_nWdKuonTimeout; ///< Kuon watchdog timeout
-    bool              m_bHasFullComm;   ///< good full communications
-    ButtonState       m_buttonState;    ///< saved button state
+    TeleopState       m_eState;           ///< teleoperation state
+    bool              m_bHasXboxComm;     ///< Xbox communications is [not] good
+    int               m_nWdXboxCounter;   ///< Xbox watchdog counter
+    int               m_nWdXboxTimeout;   ///< Xbox watchdog timeout
+    bool              m_bHasRobotComm;    ///< Kuon communications is [not] good
+    int               m_nWdRobotCounter;  ///< Kuon watchdog counter
+    int               m_nWdRobotTimeout;  ///< Kuon watchdog timeout
+    bool              m_bHasFullComm;     ///< good full communications
+    ButtonState       m_buttonState;      ///< saved button state
 
     // messages
-    kuon_control::KuonStatus  m_msgRobotStatus; ///< saved last Kuon status 
+    kuon_control::RobotStatusExtended m_msgRobotStatus;
+                                                ///< saved last robot status 
     hid::ConnStatus           m_msgConnStatus;  ///< saved last conn status 
 
 
@@ -291,20 +311,66 @@ namespace kuon
 
 
     //..........................................................................
-    // Client Servicec
+    // Client Services
     //..........................................................................
 
+    /*!
+     * \brief Set Xbox360 LED pattern client service request.
+     *
+     * \param pattern   LED pattern.
+     */
     void setLED(int pattern);
 
+    /*!
+     * \brief Set Xbox360 left and right rumble motors client service request.
+     *
+     * \param motorLeft   Left motor speed.
+     * \param motorRight  Right motor speed.
+     */
     void setRumble(int motorLeft, int motorRight);
 
-    // TBD void setRobotMode(int mode);
-
+    /*!
+     * \brief Emergency stop robot client service request.
+     */
     void estop();
 
+    /*!
+     * \brief Freeze (stop) the robot with full brake applied client service
+     * request.
+     */
+    void freeze();
+
+    /*!
+     * \brief Increment/decrement robot's speed limiting governor.
+     *
+     * \param delta     \h_plusmn delta from current governor setting..
+     */
+    void incrementGovernor(float delta);
+
+    /*!
+     * \brief Release (stop) the robot with no brake applied client service
+     * request.
+     */
+    void release();
+
+    /*!
+     * \brief Reset emergency stop condition.
+     */
     void resetEStop();
 
-    void setGovernor(float delta);
+    /*!
+     * \brief Set robot's speed limiting governor.
+     *
+     * \param governor  New governor setting.
+     */
+    void setGovernor(float governor);
+
+    /*!
+     * \brief Set robot's operation mode.
+     *
+     * \param mode    New rebot mode: auto or manual.
+     */
+    void setRobotMode(int mode);
 
 
     //..........................................................................
@@ -313,21 +379,32 @@ namespace kuon
 
     /*!
      * \brief Publish brake command.
+     *
+     * \param brake   Motor brake from coasting (0.0) to full brake (1.0).
      */
-    void publishBrakeCmd(int brake);
+    void publishBrakeCmd(float brake);
 
     /*!
      * \brief Publish slew command.
+     *
+     * \param slew  Power slew command from instant full power applied (0.0) to 
+     *              slowest power ramping (1.0).
      */
-    void publishSlewCmd(int slew);
+    void publishSlewCmd(float slew);
 
     /*!
      * \brief Publish speed command.
+     *
+     * \param speedLeft   Speed of left motors [-1.0, 1.0].
+     * \param speedRight  Speed of right motors [-1.0, 1.0].
      */
-    void publishSpeedCmd(int speedLeft, int speedRight);
+    void publishSpeedCmd(double speedLeft, double speedRight);
 
     /*!
      * \brief Publish Xbox360 rumble command.
+     *
+     * \param motorLeft   Left rumble motor speed.
+     * \param motorRight  Right rumble motor speed.
      */
     void publishRumbleCmd(int motorLeft, int motorRight);
 
@@ -337,11 +414,18 @@ namespace kuon
     //..........................................................................
 
     /*!
-     * \brief Kuon status callback.
+     * \brief Robot status callback.
      *
      * \param msg Received subscribed topic.
      */
-    void cbKuonStatus(const kuon_control::KuonStatus &msg);
+    void cbRobotStatus(const kuon_control::RobotStatusExtended &msg);
+
+    /*!
+     * \brief Robot joint state callback.
+     *
+     * \param msg Received subscribed topic.
+     */
+    void cbJointState(const kuon_control::JointStateExtended &msg);
 
     /*!
      * \brief Xbox360 HID connectivity status callback.
@@ -356,11 +440,6 @@ namespace kuon
      * \param msg Received subscribed topic.
      */
     void cbXboxBttnState(const hid::Controller360State &msg);
-
-
-    //..........................................................................
-    // Sanity
-    //..........................................................................
 
     //..........................................................................
     // Xbox Actions
@@ -396,6 +475,25 @@ namespace kuon
     void buttonSlew(ButtonState &buttonState);
 
     void buttonSpeed(ButtonState &buttonState);
+
+    //. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+    // Support 
+    //. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+
+    /*!
+     * \brief Go to pause teleoperation state.
+     */
+    void pause();
+
+    /*!
+     * \brief Go to ready to teleoperate state.
+     */
+    void ready();
+
+    /*!
+     * \brief Drive Xbox360 LEDs into a figure 8 pattern.
+     */
+    void driveLEDsFigure8Pattern();
   };
 
 } // namespace kuon

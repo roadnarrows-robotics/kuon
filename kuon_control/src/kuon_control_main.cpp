@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
   //
   // Load and parse configuration file.
   //
-  if( (rc = kuon.configure(OptsCfgFile)) != HEK_OK )
+  if( (rc = kuon.configure(OptsCfgFile)) != KUON_OK )
   {
     ROS_FATAL_STREAM(strNodeName
         << ": Failed to load configuration file "
@@ -308,9 +308,9 @@ int main(int argc, char *argv[])
   //
   // Connect to the Kuon.
   //
-  rc = kuon.connect(OptsDevDynabus, OptsBaudDynabus,
-                   OptsDevArduino, OptsBaudArduino);
-  if( rc != HEK_OK )
+  rc = kuon.connect(OptsDevMotorCtlr0, OptsDevMotorCtlr0, OptsBaudMotorCtlr);
+
+  if( rc != KUON_OK )
   {
     ROS_FATAL_STREAM(strNodeName
         << ": Failed to connect to Kuon.");

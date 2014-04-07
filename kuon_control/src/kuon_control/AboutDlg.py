@@ -1,11 +1,11 @@
 ###############################################################################
 #
 #
-# Package:   RoadNarrows Robotics ROS Pan-Tilt Robot Package
+# Package:   RoadNarrows Robotics Kuon Robotic Mobile Platform ROS Package
 #
-# Link:      https://github.com/roadnarrows-robotics/pan_tilt
+# Link:      https://github.com/roadnarrows-robotics/kuon
 #
-# ROS Node:  pan_tilt_*
+# ROS Node:  kuon_*
 #
 # File:      AboutDlg.py
 #
@@ -14,7 +14,7 @@
 ## $LastChangedDate$
 ## $Rev$
 ##
-## \brief Pan-Tilt about dialog.
+## \brief Kuon about dialog.
 ##
 ## \author Daniel Packard (daniel@roadnarrows.com)
 ## \author Robin Knight (robin.knight@roadnarrows.com)
@@ -40,7 +40,7 @@ import tkFont
 
 import webbrowser
 
-from pan_tilt_control.Utils import *
+from kuon_control.Utils import *
 
 
 # ------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ from pan_tilt_control.Utils import *
 # ------------------------------------------------------------------------------
 
 #
-## \brief Pan-Tilt about dialog.
+## \brief Kuon about dialog.
 ##
 class AboutDlg(Toplevel):
   #
@@ -62,7 +62,7 @@ class AboutDlg(Toplevel):
     kw = self.initData(kw)
 
     Toplevel.__init__(self, master=master, cnf=cnf, **kw)
-    self.title("About Pan-Tilt")
+    self.title("About Kuon")
 
     # create and show widgets
     self.createWidgets()
@@ -112,12 +112,12 @@ class AboutDlg(Toplevel):
   ##
   def initData(self, kw):
     self.m_icons          = {}    # must keep loaded icons referenced
-    self.m_prodName       = "Pan-Tilt"
-    self.m_hwVer          = "1.0.0"
+    self.m_prodName       = "Kuon"
+    self.m_hwVer          = "0.9.2"
     self.m_prodId         = 0x00
-    self.m_prodBrief      = "Pan-Tilt Robotic Mechanism"
+    self.m_prodBrief      = "Kuon Outdoor Robotic Mobile Platform"
     self.m_appVer         = "0.0.0"
-    self.m_rnUrl          = "http://www.roadnarrows.com"
+    self.m_rnUrl          = "http://www.roadnarrows.com/Kuon"
     self.m_rnEmail        = "support@roadnarrows.com"
     self.m_rnTel          = "+1.800.275.9568"
     if kw.has_key('info'):
@@ -137,18 +137,18 @@ class AboutDlg(Toplevel):
   ## \brief Create gui widgets with supporting data and show.
   #
   def createWidgets(self):
-    imageLoader = ImageLoader(py_pkg="pan_tilt_control.images")
+    imageLoader = ImageLoader(py_pkg="kuon_control.images")
 
     frame = Frame(self)
     frame.grid(row=0, column=0)
 
-    self.m_icons['pan_tilt_logo'] = imageLoader.load("PanTiltLogo.png")
+    self.m_icons['kuon_logo'] = imageLoader.load("KuonLogo.png")
 
     # top heading
     w = Label(frame)
     times32 = tkFont.Font(family="Times",size=32,weight="bold")
     w['font']   = times32
-    w['text']   = 'Pan-Tilt'
+    w['text']   = 'Kuon'
     w['anchor'] = W
     w.grid(row=0, column=1, columnspan=2, sticky=E+W)
 
@@ -283,15 +283,15 @@ class AboutDlg(Toplevel):
 
     # product logo
     w = Label(frame)
-    if self.m_icons['pan_tilt_logo'] is not None:
-      w['image']  = self.m_icons['pan_tilt_logo']
+    if self.m_icons['kuon_logo'] is not None:
+      w['image']  = self.m_icons['kuon_logo']
     w['anchor'] = CENTER
     w.grid(row=0, column=0, rowspan=row, sticky=W+N+S)
 
     # who
     w = Label(frame)
     w['text']   = """
-The RoadNarrows Pan-Tilt robotic mechanism is designed and developed by
+The RoadNarrows Kuon robotic mobile platform is designed and developed by
 RoadNarrows, a robotics and intelligent systems company base in Colorado USA.
 We are dedictated to supporting open software and hardware interfaces to foster
 a global community of users and developers."""
@@ -315,7 +315,7 @@ a global community of users and developers."""
     w['font']   = helv8
     w['anchor'] = W
     w['fg']     = '#666666'
-    w['text']   = "Pan-Tilt logos are the trademarks of " \
+    w['text']   = "Kuon and the Kuon logos are the trademarks of " \
                   "RoadNarrows LLC"
     w.grid(row=row, column=0, columnspan=3, pady=5)
 

@@ -2,7 +2,7 @@
 
 # Units supported by the Kuon
 
-uint8   enum   # the units enum value
+uint8   e   # the units enum value
 
 ### units enumeration
 uint8 UNITS_UNDEF     = 0     # units undefined (maybe defaulted)
