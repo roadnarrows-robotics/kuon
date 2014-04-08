@@ -1,11 +1,11 @@
 ###############################################################################
 #
 #
-# Package:   RoadNarrows Robotics ROS Pan-Tilt Robot Package
+# Package:   RoadNarrows Robotics Kuon Robotic Mobile Platform ROS Package
 #
-# Link:      https://github.com/roadnarrows-robotics/pan_tilt
+# Link:      https://github.com/roadnarrows-robotics/kuon
 #
-# ROS Node:  pan_tilt_panel
+# ROS Node:  kuon_panel
 #
 # File:      PanelConfig.py
 #
@@ -14,7 +14,7 @@
 ## $LastChangedDate$
 ## $Rev$
 ##
-## \brief Pan-Tilt panel configuration dialog and XML classes.
+## \brief Kuon panel configuration dialog and XML classes.
 ##
 ## \author Daniel Packard (daniel@roadnarrows.com)
 ## \author Robin Knight (robin.knight@roadnarrows.com)
@@ -40,14 +40,14 @@ import tkFont
 
 import xml.parsers.expat as expat
 
-from pan_tilt_control.Utils import *
+from kuon_control.Utils import *
 
 # ------------------------------------------------------------------------------
 # Class ConfigDlg
 # ------------------------------------------------------------------------------
 
 #
-## \brief Pan-Tilt Panel configuration dialog.
+## \brief Kuon Panel configuration dialog.
 #
 class ConfigDlg(Toplevel):
   ## \brief User's home directory.
@@ -56,8 +56,8 @@ class ConfigDlg(Toplevel):
   ## \brief User-specific configuration directory (in home directory).
   UserDirName = ".roadnarrows"
 
-  ## \brief pan_tilt_panel application configuration file name.
-  ConfigFileName = "pan_tilt_panel.xml"
+  ## \brief kuon_panel application configuration file name.
+  ConfigFileName = "kuon_panel.xml"
 
   PathNameDft = Home + os.path.sep + \
                 UserDirName + os.path.sep + \
@@ -66,22 +66,7 @@ class ConfigDlg(Toplevel):
   ## \brief Configuration default.
   ConfigDft = \
   {
-    'warn_on_calib':    True, # do [not] warn user at calibration start
-    'warn_on_release':  True, # do [not] warn user on release
-    'force_recalib':    True, # do [not] force recalibration on all joints
-    'pan': {                  # pan configuration
-      'pan_min_pos': -125.0,
-      'pan_max_pos': 125.0,
-      'pan_vel':     20.0
-    },
-    'sweep': {                # sweep configuration
-      'pan_min_pos':  -125.0,
-      'pan_max_pos':  125.0,
-      'pan_vel':      20.0,
-      'tilt_min_pos': 10.0,
-      'tilt_max_pos': 90.0,
-      'tilt_vel':     20.0
-    },
+    'governor': 0.2,
   }
 
   #
@@ -97,7 +82,7 @@ class ConfigDlg(Toplevel):
 
     Toplevel.__init__(self, master=master, cnf=cnf, **kw)
 
-    self.title("pan_tilt_panel configuration")
+    self.title("kuon_panel configuration")
 
     # create and show widgets
     self.createWidgets()
@@ -143,6 +128,8 @@ class ConfigDlg(Toplevel):
   ## \return Modified keywords sans this specific class.
   ##
   def initData(self, kw):
+    m_saved    = False
+    m_filename = None
     if kw.has_key('config'):
       self.m_config = kw['config']
       del kw['config']
@@ -157,183 +144,33 @@ class ConfigDlg(Toplevel):
     frame = Frame(self)
     frame.grid(row=0, column=0)
 
+    row = 0
+
     # top heading
     w = Label(frame)
     helv = tkFont.Font(family="Helvetica",size=24,weight="bold")
     w['font']   = helv
     w['text']   = 'Configuration'
     w['anchor'] = CENTER
-    w.grid(row=0, column=0, sticky=E+W)
-
-    # warn on calibrate check button
-    row = 1
-    self.m_varWarnCalib = IntVar()
-    self.m_varWarnCalib.set(self.m_config['warn_on_calib'])
-    w = Checkbutton(frame,
-        text="Show warning dialog before calibrating pan-tilt.",
-        variable=self.m_varWarnCalib)
-    w.grid(row=row, column=0, padx=5, sticky=W)
-
-    # force recalibration on all joints check button
-    row += 1
-    self.m_varForceRecalib = IntVar()
-    self.m_varForceRecalib.set(self.m_config['force_recalib'])
-    w = Checkbutton(frame,
-        text="Force (re)calibration for all joints on calibrate action.",
-        variable=self.m_varForceRecalib)
-    w.grid(row=row, column=0, padx=20, sticky=W)
+    w.grid(row=row, column=0, sticky=E+W)
 
     row += 1
-    spacer = Label(frame, text="  ");
-    spacer.grid(row=row, column=0, padx=5, sticky=W)
-
-    # warn on release check button
-    row += 1
-    self.m_varWarnRelease = IntVar()
-    self.m_varWarnRelease.set(self.m_config['warn_on_release'])
-    w = Checkbutton(frame,
-        text="Show warning dialog before releasing pan-tilt.",
-        variable=self.m_varWarnRelease)
-    w.grid(row=row, column=0, padx=5, sticky=W)
-
-    row += 1
-    spacer = Label(frame, text="  ");
-    spacer.grid(row=row, column=0, padx=5, sticky=W)
+    wframe = Frame(frame)
+    wframe.grid(row=row, column=0)
 
     #
-    # pan
+    # governor
     #
-    row += 1
-    wframe = LabelFrame(frame, text="Pan Parameters")
-    wframe['borderwidth'] = 2
-    wframe['relief'] = 'ridge'
-    wframe['fg'] = '#0000aa'
-    wframe.grid(row=row, column=0, ipadx=5, padx=5, sticky=W)
-
-    subcfg = self.m_config['pan']
     subrow = 0
-
-    w = Label(wframe, text="Pan Minimum Position (degrees): ")
+    w = Label(wframe, text="Governor (%): ")
     w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
 
-    self.m_varPanPanMin = DoubleVar()
-    self.m_varPanPanMin.set(subcfg['pan_min_pos'])
+    self.m_varGovernor = DoubleVar()
+    self.m_varGovernor.set(self.m_config['governor']*100.0)
     w = Entry(wframe)
     w['borderwidth'] = 2
     w['width']    = 10
-    w['textvar']  = self.m_varPanPanMin
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Pan Maximum Position (degrees): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varPanPanMax= DoubleVar()
-    self.m_varPanPanMax.set(subcfg['pan_max_pos'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varPanPanMax
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Pan Velocity (%): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varPanPanVel= DoubleVar()
-    self.m_varPanPanVel.set(subcfg['pan_vel'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varPanPanVel
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    row += 1
-    spacer = Label(frame, text="  ");
-    spacer.grid(row=row, column=0, padx=5, sticky=W)
-
-    #
-    # sweep
-    #
-    row += 1
-    wframe = LabelFrame(frame, text="Sweep Parameters")
-    wframe['borderwidth'] = 2
-    wframe['relief'] = 'ridge'
-    wframe['fg'] = '#0000aa'
-    wframe.grid(row=row, column=0, ipadx=5, padx=5, sticky=W)
-
-    subcfg = self.m_config['sweep']
-    subrow = 0
-
-    w = Label(wframe, text="Pan Minimum Position (degrees): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepPanMin = DoubleVar()
-    self.m_varSweepPanMin.set(subcfg['pan_min_pos'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepPanMin
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Pan Maximum Position (degrees): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepPanMax= DoubleVar()
-    self.m_varSweepPanMax.set(subcfg['pan_max_pos'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepPanMax
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Pan Velocity (%): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepPanVel= DoubleVar()
-    self.m_varSweepPanVel.set(subcfg['pan_vel'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepPanVel
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Tilt Minimum Position (degrees): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepTiltMin = DoubleVar()
-    self.m_varSweepTiltMin.set(subcfg['tilt_min_pos'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepTiltMin
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Tilt Maximum Position (degrees): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepTiltMax= DoubleVar()
-    self.m_varSweepTiltMax.set(subcfg['tilt_max_pos'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepTiltMax
-    w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
-
-    subrow += 1
-    w = Label(wframe, text="Tilt Velocity (%): ")
-    w.grid(row=subrow, column=0, padx=0, pady=0, sticky=E)
-
-    self.m_varSweepTiltVel= DoubleVar()
-    self.m_varSweepTiltVel.set(subcfg['tilt_vel'])
-    w = Entry(wframe)
-    w['borderwidth'] = 2
-    w['width']    = 10
-    w['textvar']  = self.m_varSweepTiltVel
+    w['textvar']  = self.m_varGovernor
     w.grid(row=subrow, column=1, padx=0, pady=0, sticky=W)
 
     #
@@ -359,27 +196,13 @@ class ConfigDlg(Toplevel):
   ## \brief Destroy window callback.
   #
   def ok(self):
-    if self.m_varWarnCalib.get():
-      self.m_config['warn_on_calib'] = True
-    else:
-      self.m_config['warn_on_calib'] = False
-    if self.m_varForceRecalib.get():
-      self.m_config['force_recalib'] = True
-    else:
-      self.m_config['force_recalib'] = False
-    if self.m_varWarnRelease.get():
-      self.m_config['warn_on_release'] = True
-    else:
-      self.m_config['warn_on_release'] = False
-    self.m_config['pan']['pan_min_pos'] = self.m_varPanPanMin.get()
-    self.m_config['pan']['pan_max_pos'] = self.m_varPanPanMax.get()
-    self.m_config['pan']['pan_vel']     = self.m_varPanPanVel.get()
-    self.m_config['sweep']['pan_min_pos'] = self.m_varSweepPanMin.get()
-    self.m_config['sweep']['pan_max_pos'] = self.m_varSweepPanMax.get()
-    self.m_config['sweep']['pan_vel']     = self.m_varSweepPanVel.get()
-    self.m_config['sweep']['tilt_min_pos'] = self.m_varSweepTiltMin.get()
-    self.m_config['sweep']['tilt_max_pos'] = self.m_varSweepTiltMax.get()
-    self.m_config['sweep']['tilt_vel']     = self.m_varSweepTiltVel.get()
+    val = self.m_varGovernor.get()
+    val /= 100.0
+    if val < 0.0:
+      val = 0.0
+    elif val > 1.0:
+      val = 1.0
+    self.m_config['governor'] = val
 
     dirname = ConfigDlg.Home + os.path.sep + ConfigDlg.UserDirName
     if not os.path.isdir(dirname):
@@ -388,10 +211,11 @@ class ConfigDlg(Toplevel):
       except OSError, err:
         print "%s: %s" % (dirname, err)
         return
-    filename = dirname + os.path.sep + ConfigDlg.ConfigFileName
+    self.m_filename = dirname + os.path.sep + ConfigDlg.ConfigFileName
     xml = ConfigXml()
-    xml.save(filename, self.m_config)
+    xml.save(self.m_filename, self.m_config)
     self.close()
+    self.m_saved = True
 
   #
   ## \brief Destroy window callback.
@@ -405,7 +229,7 @@ class ConfigDlg(Toplevel):
 # ------------------------------------------------------------------------------
 
 ##
-## \brief Application pan_tilt_panel configuration xml class.
+## \brief Application kuon_panel configuration xml class.
 ##
 class ConfigXml():
   def __init__(self):
@@ -441,22 +265,22 @@ class ConfigXml():
       return
     fp.write("""\
 <?xml version="1.0" encoding="utf-8"?>
-<?xml-stylesheet type="text/xsl" href="http://roadnarrows.com/xml/PanTilt/1.0/pan_tilt.xsl"?>
+<?xml-stylesheet type="text/xsl" href="http://roadnarrows.com/xml/PanTilt/1.0/kuon.xsl"?>
 
-<!-- RoadNarrows Pan-Tilt Top-Level Configuration -->
-<pantilt xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:noNamespaceSchemaLocation="http://roadnarrows.com/xml/PanTilt/1.0/pan_tilt.xsd">
+<!-- RoadNarrows Kuon Top-Level Configuration -->
+<kuon xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:noNamespaceSchemaLocation="http://roadnarrows.com/xml/PanTilt/1.0/kuon.xsd">
 
-  <!-- pan_tilt_panel configuration -->
-  <pan_tilt_panel>
+  <!-- kuon_panel configuration -->
+  <kuon_panel>
 """)
 
     self.writeTree(fp, 4, config);
 
     fp.write("""\
-  </pan_tilt_panel>
+  </kuon_panel>
 
-</pantilt>
+</kuon>
 """)
 
     fp.close()
@@ -483,19 +307,11 @@ class ConfigXml():
 
   def onElemEnd(self, elem):
     #print "end-of-element", "<\%s>" % (elem)
-    # pantilt pan_tilt_panel x
+    # <kuon> <kuon_panel> <x>
     if len(self.m_stack) == 3:
       elem = self.m_stack[2]
       if self.m_config.has_key(elem):
-        if elem in ['warn_on_calib', 'force_recalib', 'warn_on_release']:
-          self.m_config[elem] = self.cvtToBool(self.m_curData.strip())
-    # pantilt pan_tilt_panel {pan | sweep} x
-    elif len(self.m_stack) == 4:
-      parent = self.m_stack[2]
-      elem = self.m_stack[3]
-      if self.m_config.has_key(parent) and self.m_config[parent].has_key(elem):
-        if parent in ['pan', 'sweep']:
-          self.m_config[parent][elem] = self.cvtToFloat(self.m_curData.strip())
+        self.m_config[elem] = self.cvtToFloat(self.m_curData.strip())
     try:
       self.m_stack.pop()
     except:

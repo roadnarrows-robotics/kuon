@@ -153,7 +153,7 @@ class AboutDlg(Toplevel):
     w.grid(row=0, column=1, columnspan=2, sticky=E+W)
 
     lwidth = 10
-    rwidth = 26
+    rwidth = 24
 
     row = 1
 
@@ -161,7 +161,7 @@ class AboutDlg(Toplevel):
     w = Label(frame)
     w['text']   = self.m_prodBrief
     w['anchor'] = W
-    w['width']  = rwidth
+    w['width']  = lwidth + rwidth
     w.grid(row=row, column=1, columnspan=2, padx=2, sticky=W)
 
     row += 1
@@ -189,7 +189,7 @@ class AboutDlg(Toplevel):
     w.grid(row=row, column=1, padx=2, sticky=W)
 
     w = Label(frame)
-    w['text']   = "%08x" % (self.m_prodId)
+    w['text']   = "%02x" % (self.m_prodId)
     w['anchor'] = W
     w['width']  = rwidth
     w.grid(row=row, column=2, padx=2, sticky=W)
@@ -234,7 +234,7 @@ class AboutDlg(Toplevel):
     w.grid(row=row, column=1, padx=2, sticky=W)
 
     w = Button(frame)
-    w['text']   = 'www.roadnarrows.com/'
+    w['text']   = 'www.roadnarrows.com/Kuon'
     w['fg']   = '#aa0000'
     w['activeforeground']   = '#cc0033'
     w['activebackground']   = w['bg']
@@ -291,13 +291,13 @@ class AboutDlg(Toplevel):
     # who
     w = Label(frame)
     w['text']   = """
-The RoadNarrows Kuon robotic mobile platform is designed and developed by
+The RoadNarrows Kuon robotic mobile platform is designed and developed by 
 RoadNarrows, a robotics and intelligent systems company base in Colorado USA.
 We are dedictated to supporting open software and hardware interfaces to foster
 a global community of users and developers."""
-    w['justify'] = LEFT
-    w['anchor'] = W
-    w.grid(row=row, column=0, columnspan=3, padx=5, sticky=W)
+    w['justify'] = CENTER
+    w['anchor'] = CENTER
+    w.grid(row=row, column=0, columnspan=3, padx=10, sticky=W+E)
 
     row += 1
 

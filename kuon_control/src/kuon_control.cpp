@@ -539,6 +539,7 @@ void KuonControl::updateExtendedJointStateMsg(KuonJointStatePoint &state,
   msg.odometer.clear();
   msg.encoder.clear();
   msg.velocity_mps.clear();
+  msg.speed.clear();
   msg.power_elec.clear();
   msg.power_mech.clear();
   msg.brake.clear();
@@ -564,6 +565,7 @@ void KuonControl::updateExtendedJointStateMsg(KuonJointStatePoint &state,
     msg.odometer.push_back(state[n].m_fOdometer);
     msg.encoder.push_back(state[n].m_nEncoder);
     msg.velocity_mps.push_back(state[n].m_fVelocityMps);
+    msg.speed.push_back(state[n].m_nSpeed);
     msg.power_elec.push_back(state[n].m_fPe);
     msg.power_mech.push_back(state[n].m_fPm);
     msg.brake.push_back(state[n].m_fBrake);
