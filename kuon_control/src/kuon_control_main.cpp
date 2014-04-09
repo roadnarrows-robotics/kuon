@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
   if( rc != KUON_OK )
   {
     ROS_FATAL_STREAM(strNodeName
-        << ": Failed to connect to Kuon.");
+        << ": Failed to connect to Kuon (rc=" << rc << ").");
     return APP_EC_INIT;
   }
 

@@ -184,7 +184,8 @@ namespace kuon_control
                 const std::string &strDevMotorCtlr1,
                 int                nBaudRateMotorCtlr)
     {
-      m_robot.connect(strDevMotorCtlr0, strDevMotorCtlr1, nBaudRateMotorCtlr);
+      return m_robot.connect(strDevMotorCtlr0, strDevMotorCtlr1,
+                             nBaudRateMotorCtlr);
     }
 
     /*!

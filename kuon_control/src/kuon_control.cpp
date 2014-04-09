@@ -283,7 +283,7 @@ bool KuonControl::getProductInfo(GetProductInfo::Request  &req,
 
   ROS_DEBUG("%s", svc);
 
-  if( m_robot.isDescribed() )
+  if( !m_robot.isDescribed() )
   {
     ROS_ERROR("%s failed: "
               "Robot description not loaded - unable to determine info.",
