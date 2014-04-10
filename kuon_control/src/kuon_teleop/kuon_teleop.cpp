@@ -759,17 +759,20 @@ void KuonTeleop::buttonSpeed(ButtonState &buttonState)
   double  speedLeft;
   double  speedRight;
 
-  // Note: kuon_controller has watchdog on this subscribed speed message. It
-  // will timout and stop the robot if not sent frequently. So always send.
-  //
-  //if( !buttonDiff(ButtonIdMoveX, buttonState) &&
-  //    !buttonDiff(ButtonIdMoveY, buttonState) )
-  //{
-  //  return;
-  //}
-
   joy_x = (double)buttonState[ButtonIdMoveX];
   joy_y = (double)buttonState[ButtonIdMoveY];
+
+  //
+  // Note: kuon_control has watchdog on this subscribed speed message. It
+  // will timout and stop the robot if not sent frequently. So always send if
+  // different or not zero.
+  //
+  if( !buttonDiff(ButtonIdMoveX, buttonState) &&
+      !buttonDiff(ButtonIdMoveY, buttonState) &&
+      (joy_x == 0) && (joy_y == 0) )
+  {
+    return;
+  }
 
   // mix throttle x and y values
   speedLeft   = (joy_x + joy_y) / (double)XBOX360_JOY_MAX;

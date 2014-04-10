@@ -195,6 +195,7 @@ void KuonControl::watchdog()
   else if( ++m_nWdCounter >= m_nWdTimeout )
   {
     m_robot.setSpeed(0.0, 0.0, units_norm);
+    ROS_INFO("Watchdog timeout - Kuon auto-stopped.");
   }
 }
 
