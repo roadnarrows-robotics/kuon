@@ -371,6 +371,9 @@ int main(int argc, char *argv[])
     // publish all advertized topics
     kuon.publish();
 
+    // check for watchdog timeouts
+    kuon.watchdog();
+
     // sleep to keep at loop rate
     loop_rate.sleep();
   }

@@ -128,8 +128,8 @@ class ConfigDlg(Toplevel):
   ## \return Modified keywords sans this specific class.
   ##
   def initData(self, kw):
-    m_saved    = False
-    m_filename = None
+    self.m_saved    = False
+    self.m_filename = None
     if kw.has_key('config'):
       self.m_config = kw['config']
       del kw['config']

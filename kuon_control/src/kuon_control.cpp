@@ -144,6 +144,8 @@ using namespace kuon_control;
 KuonControl::KuonControl(ros::NodeHandle &nh, double hz) :
     m_nh(nh), m_hz(hz)
 {
+  m_nWdTimeout  = countsPerSecond(1.0);
+  m_nWdCounter  = m_nWdTimeout;
 }
 
 KuonControl::~KuonControl()
@@ -179,6 +181,21 @@ int KuonControl::configure(const string &strCfgFile)
   }
 
   return rc;
+}
+
+void KuonControl::watchdog()
+{
+  // already expired
+  if( m_nWdCounter >= m_nWdTimeout )
+  {
+    return;
+  }
+
+  // just expired
+  else if( ++m_nWdCounter >= m_nWdTimeout )
+  {
+    m_robot.setSpeed(0.0, 0.0, units_norm);
+  }
 }
 
 
@@ -684,6 +701,18 @@ void KuonControl::execSpeedCmd(const kuon_control::SpeedCmd &msg)
   units_t   units = toUnits(msg.units.e);
 
   m_robot.setSpeed(msg.left_motors, msg.right_motors, units);
+
+  // stopped - disable watchdog
+  if( (msg.left_motors == 0.0) && (msg.right_motors == 0.0) )
+  {
+    m_nWdCounter = m_nWdTimeout;
+  }
+
+  // moving - pet watchdog
+  else
+  {
+    m_nWdCounter = 0;
+  }
 }
 
 void KuonControl::execMoveCmd(const trajectory_msgs::JointTrajectory &jt)

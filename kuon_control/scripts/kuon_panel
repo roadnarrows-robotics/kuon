@@ -49,6 +49,7 @@ from industrial_msgs.msg import TriState
 
 from kuon_control.msg import BrakeCmd             # publish
 from kuon_control.srv import EStop                # service
+from kuon_control.srv import Freeze               # service
 from kuon_control.srv import GetProductInfo       # service
 from kuon_control.srv import IncrementGovernor    # service
 from kuon_control.msg import JointStateExtended   # subscribe
@@ -670,14 +671,14 @@ class window(Frame):
     w = self.createButton(wframe, "Park",
                                   "icons/icon_stop.png", self.freeze)
     w.grid(row=row, column=0, sticky=N+E+W)
-    self.m_keysNoMoves.append('freeze')
+    self.m_keysNoMoves.append('park')
 
     # release
     row += 1
     w = self.createButton(wframe, "Neutral",
                                   "icons/icon_pause.png", self.release)
     w.grid(row=row, column=0, sticky=N+E+W)
-    self.m_keysNoMoves.append('release')
+    self.m_keysNoMoves.append('neutral')
 
     # clear alarms
     #row += 1
@@ -785,8 +786,8 @@ class window(Frame):
   def kuonMoveBackward(self):
     self.showInfo("Moving back.")
     self.resetBrake()
-    cmd.units.e = Units.UNITS_NORM
     cmd = SpeedCmd()
+    cmd.units.e = Units.UNITS_NORM
     cmd.left_motors  = -0.20;
     cmd.right_motors = -0.20;
     self.m_pub_speed_cmd.publish(cmd)
@@ -828,7 +829,7 @@ class window(Frame):
     self.showInfo("Stopped.")
   
   #
-  ## \brief Specify move callback.
+  ## \brief Specify move button callback.
   #
   def specifyMove(self):
     pass
@@ -840,13 +841,13 @@ class window(Frame):
   ## release.
   ##
   def resetBrake(self):
-    if self.m_robotStatus[key]['raw'] != m_config['governor']:
+    if self.m_robotStatus['governor']['raw'] != self.m_config['governor']:
       cmd = BrakeCmd()
-      cmd.brake = m_config['governor']
-    self.m_pub_brake_cmd.publish(cmd)
+      cmd.brake = self.m_config['governor']
+      self.m_pub_brake_cmd.publish(cmd)
 
   #
-  ## \brief (Reset) emergency stop callback.
+  ## \brief (Reset) emergency stop button callback.
   #
   def estop(self):
     if not self.m_robotStatus['estop_led']['raw']:
@@ -884,7 +885,7 @@ class window(Frame):
       self.showInfo("Kuon emergency stop has been reset.")
   
   #
-  ## \brief Park kuon callback.
+  ## \brief Park kuon button callback.
   #
   def freeze(self):
     try:
@@ -893,7 +894,7 @@ class window(Frame):
       self.showError('Freeze: ' + e.message + '.')
       return
     try:
-      freeze = rospy.ServiceProxy('kuon_control/freeze', Release)
+      freeze = rospy.ServiceProxy('kuon_control/freeze', Freeze)
       freeze()
     except rospy.ServiceException, e:
       self.showError("Freeze request failed: %s." % (e.message))
@@ -901,7 +902,7 @@ class window(Frame):
     self.showInfo("Motors fully braked.")
 
   #
-  ## \brief Release kuon callback.
+  ## \brief Release kuon button callback.
   #
   def release(self):
     try:
@@ -936,7 +937,7 @@ class window(Frame):
     self.update_idletasks()
 
   #
-  ## \brief Clear alarms callback.
+  ## \brief Clear alarms button callback.
   #
   def clearAlarms(self):
     try:
@@ -954,16 +955,36 @@ class window(Frame):
     self.showInfo("Alarms cleared.")
   
   #
-  ## \brief Open settings dialog callback.
+  ## \brief Set governor.
+  #
+  def setGovernor(self, governor):
+    print 'rdk', governor
+    try:
+      rospy.wait_for_service("kuon_control/set_governor", timeout=1)
+    except rospy.ROSException, e:
+      self.showError('SetGovernor: ' + e.message + '.')
+      return
+    try:
+      set_governor = rospy.ServiceProxy('kuon_control/set_governor',
+          SetGovernor)
+      set_governor(governor)
+    except rospy.ServiceException, e:
+      self.showError("SetGovernor request failed: %s." % (e.message))
+      return
+    self.showInfo("Governor set.")
+
+  #
+  ## \brief Open settings dialog button callback.
   #
   def settings(self):
     dlg = ConfigDlg(master=self, config=self.m_config)
     self.m_config = dlg.m_config
     if dlg.m_saved:
       self.showInfo("Configuration saved to %s" % (dlg.m_filename))
+      self.setGovernor(self.m_config['governor'])
   
   #
-  ## \brief Show about dialog callback.
+  ## \brief Show about dialog button callback.
   #
   def about(self):
     prodInfo = None
@@ -990,6 +1011,7 @@ class window(Frame):
   def updateRobotStatus(self, status):
     if self.m_doCfg:
       self.m_doCfg = False;
+      self.setGovernor(self.m_config['governor'])
     self.showRobotStatus(status)
 
   #
@@ -999,7 +1021,7 @@ class window(Frame):
   #
   def updateWheelStates(self, wheels):
     # no joints
-    if len(joint.name) == 0:
+    if len(wheels.name) == 0:
       return
     self.showJointStates(wheels)
 
@@ -1085,7 +1107,7 @@ class window(Frame):
       key = 'speed'
       val = joint.speed[i]
       if self.m_robotJoint[name][key]['raw'] != val:
-        text, fg = self.toPercent(speed/RS160D_MOTOR_SPEED_MAX);
+        text, fg = self.toPercent(val/RS160D_MOTOR_SPEED_MAX);
         self.showEntry(self.m_robotJoint[name][key]['w'],
                      self.m_robotJoint[name][key]['var'], text, fg)
         self.m_robotJoint[name][key]['raw'] = val
@@ -1336,7 +1358,7 @@ Options and arguments:
                      self.m_win.updateRobotStatus) 
 
     # subscribe to extended joint state data
-    rospy.Subscriber("kuon_control/joint_state_ex", 
+    rospy.Subscriber("kuon_control/joint_states_ex", 
                      JointStateExtended, 
                      self.m_win.updateWheelStates) 
 

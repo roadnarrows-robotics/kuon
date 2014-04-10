@@ -199,6 +199,11 @@ namespace kuon_control
     }
 
     /*!
+     * \brief check for watchdog timeouts.
+     */
+    void watchdog();
+
+    /*!
      * \brief Advertise all server services.
      */
     virtual void advertiseServices();
@@ -289,10 +294,24 @@ namespace kuon_control
     void updateExtendedRobotStatusMsg(kuon::KuonRobotStatus &status,
                                       RobotStatusExtended   &msg);
 
+    /*!
+     * \brief Convert seconds to loop counts.
+     *
+     * \param seconds Seconds.
+     *
+     * \return Count.
+     */
+    int countsPerSecond(double seconds)
+    {
+      return (int)(seconds * m_hz);
+    }
+
   protected:
-    ros::NodeHandle  &m_nh;       ///< the node handler bound to this instance
-    double            m_hz;       ///< application nominal loop rate
-    kuon::KuonRobot   m_robot;    ///< real-time, Kuon robotic mobile platform
+    ros::NodeHandle  &m_nh;         ///< the node handler bound to this instance
+    double            m_hz;         ///< application nominal loop rate
+    kuon::KuonRobot   m_robot;      ///< real-time, Kuon robotic mobile platform
+    int               m_nWdCounter; ///< watchdog counter
+    int               m_nWdTimeout; ///< watchdog timeout count
 
     // ROS services, publishers, subscriptions.
     MapServices       m_services;       ///< Kuon control server services
