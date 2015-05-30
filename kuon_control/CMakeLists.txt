@@ -14,8 +14,10 @@ find_package(catkin
 
 find_package(Boost REQUIRED COMPONENTS system)
 
-set(rnr_DIR /usr/local/lib/cmake/rnr)
-find_package(rnr)
+set(rnr-kuon_DIR /usr/local/lib/cmake/rnr)
+find_package(rnr-kuon
+  REQUIRED
+)
 
 catkin_python_setup()
 
@@ -70,18 +72,18 @@ add_executable(kuon_teleop
 
 include_directories(
   include 
-  ${rnr_INCLUDE_DIRS}
+  ${rnr-kuon_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
 )
 
 target_link_libraries(kuon_control 
-  ${rnr_LIBRARIES}
+  ${rnr-kuon_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
 target_link_libraries(kuon_teleop 
-  ${rnr_LIBRARIES}
+  ${rnr-kuon_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
