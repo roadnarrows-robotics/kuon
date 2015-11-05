@@ -291,7 +291,7 @@ void KuonTeleop::incrementGovernor(float delta)
 
   if( m_clientServices["/kuon_control/increment_governor"].call(svc) )
   {
-    ROS_DEBUG("Kuon governor set at %%5.1f", svc.response.governor);
+    ROS_DEBUG("Kuon governor set at %5.1f", svc.response.governor);
   }
   else
   {
@@ -335,7 +335,7 @@ void KuonTeleop::setGovernor(float governor)
 
   if( m_clientServices["/kuon_control/set_governor"].call(svc) )
   {
-    ROS_DEBUG("Kuon governor set at %%5.1f", svc.response.governor);
+    ROS_DEBUG("Kuon governor set at %5.1f", svc.response.governor);
   }
   else
   {

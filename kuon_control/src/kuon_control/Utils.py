@@ -3,9 +3,9 @@
 #
 # Package:   RoadNarrows Robotics ROS Pan-Tilt Robot Package
 #
-# Link:      https://github.com/roadnarrows-robotics/pan_tilt
+# Link:      https://github.com/roadnarrows-robotics/kuon
 #
-# ROS Node:  pan_tilt_*
+# ROS Node:  kuon_*
 #
 # File:      Utils.py
 #
@@ -55,7 +55,7 @@ class ImageLoader:
   #
   ## \brief Constructor
   ##
-  ## \param py_pkg      Python resource (e.g. "pan_tilt_control.images").
+  ## \param py_pkg      Python resource (e.g. "kuon.images").
   ## \param image_paths List of directory paths to search for the image.
   #
   def __init__(self, py_pkg=None, image_paths=[]):

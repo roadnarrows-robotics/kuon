@@ -122,9 +122,11 @@ class window(Frame):
     kw = self.initData(kw)
 
     # publish speed command
-    self.m_pub_speed_cmd = rospy.Publisher("kuon_control/speed_cmd", SpeedCmd)
+    self.m_pub_speed_cmd = rospy.Publisher("kuon_control/speed_cmd", SpeedCmd,
+        queue_size=2)
 
-    self.m_pub_brake_cmd = rospy.Publisher("kuon_control/brake_cmd", BrakeCmd)
+    self.m_pub_brake_cmd = rospy.Publisher("kuon_control/brake_cmd", BrakeCmd,
+        queue_size=2)
 
     Frame.__init__(self, master=master, cnf=cnf, **kw)
     self.master.title("Kuon Control Panel")
