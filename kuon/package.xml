@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>kuon</name>
-  <version>0.0.1</version>
+  <version>1.0.0</version>
   <description>The Kuon Rugged Mobile Robotic Platform ROS metapackage - provides complete kuon software bundle.</description>
   <maintainer email="daniel@roadnarrows.com">daniel packard</maintainer>
 
