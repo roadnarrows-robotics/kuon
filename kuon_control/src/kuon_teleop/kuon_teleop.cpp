@@ -19,7 +19,7 @@
  * \author Robin Knight (robin.knight@roadnarrows.com)
  *
  * \par Copyright:
- * (C) 2013-2014  RoadNarrows
+ * (C) 2013-2018  RoadNarrows
  * (http://www.roadnarrows.com)
  * \n All Rights Reserved
  */
@@ -155,6 +155,22 @@ KuonTeleop::KuonTeleop(ros::NodeHandle &nh, double hz) : m_nh(nh), m_hz(hz)
   m_nWdRobotTimeout = countsPerSecond(5.0);
   m_bHasFullComm    = false;
 
+  // C++11 or greater
+#if __cplusplus >= 201103
+  map<int, int> m_buttonState = {
+      {ButtonIdEStop,   0},
+      {ButtonIdGovUp,   0},
+      {ButtonIdGovDown, 0},
+      {ButtonIdPause,   0},
+      {ButtonIdStart,   0},
+      {ButtonIdMoveX,   0},
+      {ButtonIdMoveY,   0},
+      {ButtonIdBrake,   0},
+      {ButtonIdSlew,    0}
+  };
+
+  // C++98
+#else
   m_buttonState = map_list_of
       (ButtonIdEStop,   0)
       (ButtonIdGovUp,   0)
@@ -165,6 +181,7 @@ KuonTeleop::KuonTeleop(ros::NodeHandle &nh, double hz) : m_nh(nh), m_hz(hz)
       (ButtonIdMoveY,   0)
       (ButtonIdBrake,   0)
       (ButtonIdSlew,    0);
+#endif
 }
 
 KuonTeleop::~KuonTeleop()
